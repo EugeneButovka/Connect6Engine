@@ -9,10 +9,13 @@ class Defines:
     GRID_NUM=21 #Number of the board, 19*19 plus edges.
     GRID_COUNT=361 #Sum of the points in the board.
     LOG_FILE="tia-engine.log"
-    ENGINE_NAME="TIA.Connect6"
+    ENGINE_NAME="TIA.Connect6_end_game_detect_Butovka_Hasnaat"
     # Max values in the evaluation.
     MAXINT=20000
     MININT=-20000
+    # Game end results.
+    WIN=1
+    DRAW=2
 
 class StonePosition:
     def __init__(self,x,y):

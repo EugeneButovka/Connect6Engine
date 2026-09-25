@@ -5,3 +5,5 @@ dist
 main.spec
 tia-engine.log
 env/
+.venv/
+.idea

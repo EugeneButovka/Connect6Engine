@@ -4,49 +4,74 @@ import time
 # Point (x, y) if in the valid position of the board.
 def isValidPos(x,y):
     return x>0 and x<Defines.GRID_NUM-1 and y>0 and y<Defines.GRID_NUM-1
-    
+
 def init_board(board):
     for i in range(21):
         board[i][0] = board[0][i] = board[i][Defines.GRID_NUM - 1] = board[Defines.GRID_NUM - 1][i] = Defines.BORDER
     for i in range(1, Defines.GRID_NUM - 1):
         for j in range(1, Defines.GRID_NUM - 1):
             board[i][j] = Defines.NOSTONE
-            
+
 def make_move(board, move, color):
     board[move.positions[0].x][move.positions[0].y] = color
     board[move.positions[1].x][move.positions[1].y] = color
+
+def color_to_name(color):
+    if color == Defines.BLACK:
+        return "black"
+    return "white"
+
+def opponent(color):
+    if color == Defines.BLACK:
+        return Defines.WHITE
+    return Defines.BLACK
 
 def unmake_move(board, move):
     board[move.positions[0].x][move.positions[0].y] = Defines.NOSTONE
     board[move.positions[1].x][move.positions[1].y] = Defines.NOSTONE
 
-def is_win_by_premove(board, preMove):
+def count_stones_in_line(board, position, direction):
+    movStone = board[position.x][position.y]
+    count = 0
+    x = position.x
+    y = position.y
+    while board[x][y] == movStone:
+        x += direction[0]
+        y += direction[1]
+        count += 1
+    x = position.x - direction[0]
+    y = position.y - direction[1]
+    while board[x][y] == movStone:
+        x -= direction[0]
+        y -= direction[1]
+        count += 1
+    return count
+
+def is_win_by_move(board, preMove):
     directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
 
     for direction in directions:
-        for i in range(len(preMove.positions)):
-            count = 0
-            position = preMove.positions[i]
-            n = x = position.x
-            m = y = position.y
-            movStone = board[n][m]
-            
-            if (movStone == Defines.BORDER or movStone == Defines.NOSTONE):
-                return False;
-                
-            while board[x][y] == movStone:
-                x += direction[0]
-                y += direction[1]
-                count += 1
-            x = n - direction[0]
-            y = m - direction[1]
-            while board[x][y] == movStone:
-                x -= direction[0]
-                y -= direction[1]
-                count += 1
-            if count >= 6:
+        for position in preMove.positions:
+            stone = board[position.x][position.y]
+            if stone == Defines.BORDER or stone == Defines.NOSTONE:
+                continue
+            if count_stones_in_line(board, position, direction) >= 6:
                 return True
     return False
+
+def is_board_full(board):
+    for i in range(1, Defines.GRID_NUM - 1):
+        for j in range(1, Defines.GRID_NUM - 1):
+            if board[i][j] == Defines.NOSTONE:
+                return False
+    return True
+
+def check_game_end(board, preMove):
+    if is_win_by_move(board, preMove):
+        return Defines.WIN
+    if is_board_full(board):
+        return Defines.DRAW
+    return None
 
 def get_msg(max_len):
     buf = input().strip()
@@ -103,7 +128,7 @@ def print_board(board, preMove=None):
                 print(" O", end="")
             elif stone == Defines.WHITE:
                 print(" *", end="")
-        print(" ", end="")        
+        print(" ", end="")
         print(f"{chr(ord('A') - 1 + i)}", end="\n")
     print("   " + "".join([chr(i + ord('A') - 1)+" " for i in range(1, Defines.GRID_NUM - 1)]))
 

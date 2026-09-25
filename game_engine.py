@@ -63,9 +63,14 @@ class GameEngine:
                 make_move(self.m_board, self.m_best_move, Defines.WHITE)
                 self.m_chess_type = Defines.WHITE
             elif msg == "next":
-                self.m_chess_type = self.m_chess_type ^ 3
+                self.m_chess_type = opponent(self.m_chess_type)
                 if self.search_a_move(self.m_chess_type, self.m_best_move):
                     make_move(self.m_board, self.m_best_move, self.m_chess_type)
+                    result = check_game_end(self.m_board, self.m_best_move)
+                    if result == Defines.WIN:
+                        print(f"AI wins with {color_to_name(self.m_chess_type)}!")
+                    elif result == Defines.DRAW:
+                        print("Draw!")
                     msg = f"move {move2msg(self.m_best_move)}"
                     print(msg)
                     flush_output()
@@ -82,12 +87,20 @@ class GameEngine:
                     self.m_chess_type = Defines.WHITE
             elif msg.startswith("move"):
                 self.m_best_move = msg2move(msg[5:])
-                make_move(self.m_board, self.m_best_move, self.m_chess_type ^ 3)
-                if is_win_by_premove(self.m_board, self.m_best_move):
-                    print("We lost!")
-                if self.search_a_move(self.m_chess_type, self.m_best_move):
+                make_move(self.m_board, self.m_best_move, opponent(self.m_chess_type))
+                result = check_game_end(self.m_board, self.m_best_move)
+                if result == Defines.WIN:
+                    print(f"Human wins with {color_to_name(opponent(self.m_chess_type))}!")
+                elif result == Defines.DRAW:
+                    print("Draw!")
+                if result is None and self.search_a_move(self.m_chess_type, self.m_best_move):
                     msg = f"move {move2msg(self.m_best_move)}"
                     make_move(self.m_board, self.m_best_move, self.m_chess_type)
+                    result = check_game_end(self.m_board, self.m_best_move)
+                    if result == Defines.WIN:
+                        print(f"AI wins with {color_to_name(self.m_chess_type)}!")
+                    elif result == Defines.DRAW:
+                        print("Draw!")
                     print(msg)
                     flush_output()
             elif msg.startswith("depth"):
