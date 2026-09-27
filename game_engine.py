@@ -42,7 +42,10 @@ class GameEngine:
         msg = ""
         self.on_help()
         while True:
-            msg = input().strip()
+            try:
+                msg = input().strip()
+            except EOFError:
+                break
             log_to_file(msg)
             if msg == "name":
                 print(f"name {self.m_engine_name}")
