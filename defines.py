@@ -16,6 +16,8 @@ class Defines:
     # Game end results.
     WIN=1
     DRAW=2
+    # Max amount of candidate moves generated for the search.
+    MAX_CANDIDATE_MOVES=20
 
 class StonePosition:
     def __init__(self,x,y):

@@ -72,8 +72,10 @@ class GameEngine:
                     result = check_game_end(self.m_board, self.m_best_move)
                     if result == Defines.WIN:
                         print(f"AI wins with {color_to_name(self.m_chess_type)}!")
+                        break
                     elif result == Defines.DRAW:
                         print("Draw!")
+                        break
                     msg = f"move {move2msg(self.m_best_move)}"
                     print(msg)
                     flush_output()
@@ -94,16 +96,20 @@ class GameEngine:
                 result = check_game_end(self.m_board, self.m_best_move)
                 if result == Defines.WIN:
                     print(f"Human wins with {color_to_name(opponent(self.m_chess_type))}!")
+                    break
                 elif result == Defines.DRAW:
                     print("Draw!")
-                if result is None and self.search_a_move(self.m_chess_type, self.m_best_move):
+                    break
+                if self.search_a_move(self.m_chess_type, self.m_best_move):
                     msg = f"move {move2msg(self.m_best_move)}"
                     make_move(self.m_board, self.m_best_move, self.m_chess_type)
                     result = check_game_end(self.m_board, self.m_best_move)
                     if result == Defines.WIN:
                         print(f"AI wins with {color_to_name(self.m_chess_type)}!")
+                        break
                     elif result == Defines.DRAW:
                         print("Draw!")
+                        break
                     print(msg)
                     flush_output()
             elif msg.startswith("depth"):

@@ -34,22 +34,14 @@ class SearchEngine():
             bestMove.positions[1].x = 10
             bestMove.positions[1].y = 10
         else:
-            move1 = self.find_possible_move()
-            bestMove.positions[0].x = move1[0]
-            bestMove.positions[0].y = move1[1]
-            bestMove.positions[1].x = move1[0]
-            bestMove.positions[1].y = move1[1]
-            make_move(self.m_board,bestMove,ourColor)
-
-            '''#Check game result
-            if (check_game_end(self.m_board, bestMove) == Defines.WIN):
-                #Self wins.
-                return Defines.MININT + 1;'''
-
-            move2 = self.find_possible_move()
-            bestMove.positions[1].x = move2[0]
-            bestMove.positions[1].y = move2[1]
-            make_move(self.m_board,bestMove,ourColor)
+            candidates = self.generate_candidate_moves(Defines.MAX_CANDIDATE_MOVES)
+            if len(candidates) > 0:
+                candidate = candidates[0]
+                bestMove.positions[0].x = candidate.positions[0].x
+                bestMove.positions[0].y = candidate.positions[0].y
+                bestMove.positions[1].x = candidate.positions[1].x
+                bestMove.positions[1].y = candidate.positions[1].y
+                make_move(self.m_board,bestMove,ourColor)
 
         return alpha
 
@@ -60,12 +52,38 @@ class SearchEngine():
                     return False
         return True
 
-    def find_possible_move(self):
-        for i in range(1,len(self.m_board)-1):
-            for j in range(1, len(self.m_board[i])-1):
-                if(self.m_board[i][j] == Defines.NOSTONE):
-                    return (i,j)
-        return (-1,-1)
+    def get_empty_positions(self):
+        positions = []
+        for i in range(1, len(self.m_board) - 1):
+            for j in range(1, len(self.m_board[i]) - 1):
+                if self.m_board[i][j] == Defines.NOSTONE:
+                    positions.append(StonePosition(i, j))
+        positions.sort(key=self.count_neighbor_stones, reverse=True)
+        return positions
+
+    def count_neighbor_stones(self, position):
+        count = 0
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                stone = self.m_board[position.x + dx][position.y + dy]
+                if stone != Defines.NOSTONE and stone != Defines.BORDER:
+                    count += 1
+        return count
+
+    def generate_candidate_moves(self, limit):
+        positions = self.get_empty_positions()
+        moves = []
+        for i in range(len(positions)):
+            for j in range(i + 1, len(positions)):
+                move = StoneMove()
+                move.positions[0] = positions[i]
+                move.positions[1] = positions[j]
+                moves.append(move)
+                if len(moves) >= limit:
+                    return moves
+        return moves
 
 def flush_output():
     import sys
