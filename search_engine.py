@@ -13,30 +13,67 @@ class SearchEngine():
         self.m_alphabeta_depth = alphabeta_depth
         self.m_total_nodes = 0
 
-    def alpha_beta_search(self, depth, alpha, beta, ourColor, bestMove, preMove): # change for min max
+    def alpha_beta_search(self, depth, alpha, beta, ourColor, bestMove, preMove):
 
-        #Check game result
-        score = self.evaluate(preMove)
-        if score == Defines.MAXINT or score == Defines.MININT:
-            return score
-
-        alpha = 0
-        if(self.check_first_move()):
+        self.m_total_nodes += 1
+        if self.check_first_move():
             bestMove.positions[0].x = 10
             bestMove.positions[0].y = 10
             bestMove.positions[1].x = 10
             bestMove.positions[1].y = 10
-        else:
-            candidates = self.generate_candidate_moves(Defines.MAX_CANDIDATE_MOVES)
-            if len(candidates) > 0:
-                candidate = candidates[0]
-                bestMove.positions[0].x = candidate.positions[0].x
-                bestMove.positions[0].y = candidate.positions[0].y
-                bestMove.positions[1].x = candidate.positions[1].x
-                bestMove.positions[1].y = candidate.positions[1].y
-                make_move(self.m_board,bestMove,ourColor)
+            return 0
 
-        return alpha
+        candidates = self.generate_candidate_moves(Defines.MAX_CANDIDATE_MOVES)
+        if len(candidates) == 0:
+            return self.evaluate(preMove)
+
+        maximizing = ourColor == Defines.BLACK
+        best_score = Defines.MININT if maximizing else Defines.MAXINT
+        best_candidate = candidates[0]
+        for candidate in candidates:
+            make_move(self.m_board, candidate, ourColor)
+            score = self.min_max(depth - 1, opponent(ourColor), candidate)
+            unmake_move(self.m_board, candidate)
+            if maximizing:
+                if score > best_score:
+                    best_score = score
+                    best_candidate = candidate
+            else:
+                if score < best_score:
+                    best_score = score
+                    best_candidate = candidate
+
+        bestMove.positions[0].x = best_candidate.positions[0].x
+        bestMove.positions[0].y = best_candidate.positions[0].y
+        bestMove.positions[1].x = best_candidate.positions[1].x
+        bestMove.positions[1].y = best_candidate.positions[1].y
+        return best_score
+
+    def min_max(self, depth, ourColor, preMove):
+        self.m_total_nodes += 1
+        score = self.evaluate(preMove)
+        if score == Defines.MAXINT or score == Defines.MININT:
+            return score
+        if depth <= 0:
+            return score
+
+        candidates = self.generate_candidate_moves(Defines.MAX_CANDIDATE_MOVES)
+        if len(candidates) == 0:
+            return score
+
+        maximizing = ourColor == Defines.BLACK
+        best_score = Defines.MININT if maximizing else Defines.MAXINT
+        for candidate in candidates:
+            make_move(self.m_board, candidate, ourColor)
+            child = self.min_max(depth - 1, opponent(ourColor), candidate)
+            unmake_move(self.m_board, candidate)
+            if maximizing:
+                if child > best_score:
+                    best_score = child
+            else:
+                if child < best_score:
+                    best_score = child
+        return best_score
 
     def check_first_move(self):
         for i in range(1,len(self.m_board)-1):

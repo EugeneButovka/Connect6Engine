@@ -125,7 +125,7 @@ The value of a living set grows ×10 per stone, approximating how the number of 
 
 **Why geometric, not linear.** A linear scale (1, 2, 3, ...) would rank a position with three scattered pairs above a single live-4 — yet the live-4 is nearly a win while the pairs are barely threats. Each extra stone in a set multiplies its completion possibilities: more overlapping 6-windows contain it, fewer free cells are needed to finish, and the opponent has fewer effective blocks. Any base > 1 captures that; base 10 was chosen so one tier comfortably dominates any *realistic* number of lower tiers on a 19×19 board.
 
-**The arithmetic the search will feel.** Because the table is `10^(length−1)`, ten sets of one tier are worth exactly one set of the next tier:
+**The arithmetic the search feels.** Because the table is `10^(length−1)`, ten sets of one tier are worth exactly one set of the next tier:
 
 ```
 1 live-4 (1000)  =  10 live-3s  =  100 live-2s  =  1000 singles
@@ -166,7 +166,43 @@ This is what makes move choice sensible without any hand-written rules: extendin
 
 One evaluation sweeps 361 cells x 4 axes; each `measure_line` walk visits at most ~20 cells (run + free before hitting border/opponent). A handful of thousands of cell visits — microseconds. The `perf_depth.ipynb` notebook measures the real numbers and plots them.
 
-## 5. Known limitations
+## 5. The evaluator inside the naive min-max search
+
+The evaluation function is consumed by the naive search tree method (`SearchEngine.alpha_beta_search` /
+`SearchEngine.min_max`, search_engine.py) — plain min-max with **no pruning**, per the spec:
+
+1. **Root** — `alpha_beta_search` handles the empty-board center opening, then explores every
+   proposed candidate (`generate_candidate_moves(MAX_CANDIDATE_MOVES)`) and picks the move with the
+   best `min_max` score: Black-to-move nodes **maximize**, White-to-move nodes **minimize** —
+   the same fixed first-player frame as the evaluation itself, so no sign flipping anywhere.
+2. **Terminal nodes** — every node first runs `evaluate(preMove)`; a game-over score
+   (`MAXINT`/`MININT`) stops the recursion immediately: a completed six is a leaf no matter the
+   remaining depth.
+3. **Depth cutoff** — at `depth == 0` the node returns the *static evaluation* of the position.
+   This is the fixed exploration depth the spec requires: it bounds the tree at
+   `O(B^depth)` nodes and is what the `depth d` command controls (default 3).
+4. **Traversal** — children are explored with `make_move`/`unmake_move` on the engine's private
+   board copy, alternating colors every ply; `preMove` is always the move that led to the node,
+   so terminal detection only ever needs to look at the last two stones placed.
+
+Because there is no pruning, every node expands all 20 candidates and the tree grows as `20^depth`.
+Measured on the notebook's benchmark position (mid-game board, CPython 3.14):
+
+| depth | nodes   | min time      |
+|-------|---------|---------------|
+| 1     | 21      | ~1 ms         |
+| 2     | 421     | ~20 ms        |
+| 3     | 8 421   | ~0.45 s       |
+| 4     | 168 421 | ~9 s          |
+| 5     | 3.4 M   | ~3 min        |
+| 6     | 68 M    | ~1 hour (do not use) |
+
+Practical consequence: with plain min-max the playable range is `depth 2`-`3`; the engine's default
+depth of 6 is only feasible once alpha-beta pruning lands (pruning cut depth 6 to ~144k nodes / ~11 s
+in an earlier experiment). The `perf_depth.ipynb` notebook documents this scaling: a controlled
+branching-factor simulation of the same recursion, plus measurements of the real search at low depths.
+
+## 6. Known limitations
 
 - **Terminal dominance is not mathematically guaranteed**: many simultaneous live-5 sets could in principle sum past `MAXINT`. In practice the search ends the game at the first completed six, so this needs pathological positions to trigger.
 - **Sets are counted independently**: two collinear runs sharing one empty gap (a "broken three" pattern) are valued as two sets, not as the combined threat they really are.

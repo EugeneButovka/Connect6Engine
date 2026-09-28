@@ -12,7 +12,7 @@ class GameEngine:
                 self.m_engine_name = name
             else:
                 print(f"Too long Engine Name: {name}, should be less than: {Defines.MSG_LENGTH}")
-        self.m_alphabeta_depth = 6
+        self.m_alphabeta_depth = Defines.ALPHABETA_DEPTH
         self.m_chess_type = None
         self.m_vcf = False
         self.m_board = [[0] * Defines.GRID_NUM for _ in range(Defines.GRID_NUM)]
@@ -36,7 +36,7 @@ class GameEngine:
             "              and the engine will search the move for the next step.\n"
             " new black   - start a new game and set the engine to black player.\n"
             " new white   - start a new game and set it to white.\n"
-            " depth d     - set the alpha beta search depth, default is 6.\n"
+            " depth d     - set the alpha beta search depth, default is 3.\n"
             " vcf         - set vcf search.\n"
             " unvcf       - set none vcf search.\n"
             " help        - print this help.\n")

@@ -18,6 +18,8 @@ class Defines:
     DRAW=2
     # Max amount of candidate moves generated for the search.
     MAX_CANDIDATE_MOVES=20
+    # Default depth of the min-max exploration tree.
+    ALPHABETA_DEPTH=3
     # Line axes on the board; each vector is walked both ways.
     DIRECTIONS=[(1, 0), (0, 1), (1, 1), (1, -1)]
     # Value of a living set of stones, indexed by its length.

@@ -181,9 +181,9 @@ def test_opponent():
 # MOVE GENERATION TESTS
 # ============================================================
 
-def create_search_engine(board):
+def create_search_engine(board, color=Defines.WHITE):
     engine = SearchEngine()
-    engine.before_search(board, Defines.WHITE, 6)
+    engine.before_search(board, color, Defines.ALPHABETA_DEPTH)
     return engine
 
 
@@ -373,6 +373,61 @@ def test_longer_set_worth_more():
 
 
 # ============================================================
+# MIN-MAX SEARCH TESTS
+# ============================================================
+
+def create_winnable_board():
+    board = create_empty_board()
+    for y in range(3, 8):
+        board[10][y] = Defines.BLACK
+    board[9][7] = Defines.BLACK
+    board[11][7] = Defines.BLACK
+    board[9][8] = Defines.BLACK
+    board[11][8] = Defines.BLACK
+    return board
+
+
+def placed_cells(move):
+    return {
+        (move.positions[0].x, move.positions[0].y),
+        (move.positions[1].x, move.positions[1].y),
+    }
+
+
+def test_search_finds_winning_move():
+    board = create_winnable_board()
+    engine = create_search_engine(board, Defines.BLACK)
+    best = StoneMove()
+    score = engine.alpha_beta_search(2, Defines.MININT, Defines.MAXINT, Defines.BLACK, best, create_move_at(10, 7))
+    assert score == Defines.MAXINT
+    assert (10, 8) in placed_cells(best)
+    print("Search Test 7 - Min-max finds the winning move: PASS")
+
+
+def test_search_blocks_threat():
+    board = create_winnable_board()
+    engine = create_search_engine(board, Defines.WHITE)
+    best = StoneMove()
+    score = engine.alpha_beta_search(2, Defines.MININT, Defines.MAXINT, Defines.WHITE, best, create_move_at(10, 7))
+    assert score < Defines.MAXINT
+    assert (10, 8) in placed_cells(best)
+    print("Search Test 8 - Min-max blocks the opponent's winning move: PASS")
+
+
+def test_search_depth_grows_nodes():
+    board = create_empty_board()
+    board[10][10] = Defines.BLACK
+    counts = []
+    for depth in (1, 2, 3):
+        engine = create_search_engine(board, Defines.WHITE)
+        best = StoneMove()
+        engine.alpha_beta_search(depth, Defines.MININT, Defines.MAXINT, Defines.WHITE, best, create_move_at(10, 10))
+        counts.append(engine.m_total_nodes)
+    assert counts[0] < counts[1] < counts[2]
+    print("Search Test 9 - Deeper searches explore more nodes: PASS")
+
+
+# ============================================================
 # RUN ALL TESTS
 # ============================================================
 
@@ -412,6 +467,11 @@ if __name__ == "__main__":
     test_dead_set_is_worthless()
     test_diagonal_equals_horizontal()
     test_longer_set_worth_more()
+
+    print("\n========== MIN-MAX SEARCH TESTS ==========\n")
+    test_search_finds_winning_move()
+    test_search_blocks_threat()
+    test_search_depth_grows_nodes()
 
     print("\n========== MOVE GENERATION TESTS ==========\n")
     test_candidate_limit()
