@@ -11,19 +11,22 @@ from .defines import (
     Board,
     Move,
     Position,
+    RankedPair,
     ScoredCell,
     SetWeight,
 )
-from .board import measure_line
+from .board import copy_board, measure_line
 
 
 def generate_candidate_moves(board: Board, limit: int) -> list[Move]:
-    cells = _get_scored_cells(board)[:MAX_CANDIDATE_CELLS]
+    scratch = copy_board(board)
+    cells, completion_pairs = _get_scored_cells(scratch)
+    cells = cells[:MAX_CANDIDATE_CELLS]
     moves: list[Move] = []
     seen: set[CellPair] = set()
-    for x1, y1, x2, y2 in _find_completion_pairs(board, cells):
+    for x1, y1, x2, y2 in completion_pairs:
         _try_add_candidate(moves, seen, limit, x1, y1, x2, y2)
-    pairs: list[tuple[int, int, int]] = []
+    pairs: list[RankedPair] = []
     for i in range(len(cells)):
         for j in range(i + 1, len(cells)):
             pairs.append((cells[i][0] + cells[j][0], i, j))
@@ -35,7 +38,7 @@ def generate_candidate_moves(board: Board, limit: int) -> list[Move]:
     return moves
 
 
-def _get_scored_cells(board: Board) -> list[ScoredCell]:
+def _get_scored_cells(board: Board) -> tuple[list[ScoredCell], list[CompletionPair]]:
     scored: list[ScoredCell] = []
     fillers: list[ScoredCell] = []
     for i in range(1, GRID_NUM - 1):
@@ -47,19 +50,11 @@ def _get_scored_cells(board: Board) -> list[ScoredCell]:
             else:
                 fillers.append((0, i, j))
     scored.sort(reverse=True)
-    return scored + fillers
-
-
-def _count_neighbor_stones(board: Board, x: int, y: int) -> int:
-    count = 0
-    for dx in (-1, 0, 1):
-        for dy in (-1, 0, 1):
-            if dx == 0 and dy == 0:
-                continue
-            stone = board[x + dx][y + dy]
-            if stone != NOSTONE and stone != BORDER:
-                count += 1
-    return count
+    completion_pairs: list[CompletionPair] = []
+    for score, x, y in scored:
+        if score >= SetWeight.LIVE_FIVE:
+            completion_pairs.extend(_find_completion_pairs(board, x, y))
+    return scored + fillers, completion_pairs
 
 
 def _score_position(board: Board, x: int, y: int) -> int:
@@ -74,6 +69,32 @@ def _score_position(board: Board, x: int, y: int) -> int:
         board[x][y] = NOSTONE
         total += value
     return total
+
+
+def _find_completion_pairs(board: Board, x: int, y: int) -> list[CompletionPair]:
+    pairs: list[CompletionPair] = []
+    for color in (Color.BLACK, Color.WHITE):
+        board[x][y] = color.value
+        for direction in DIRECTIONS:
+            length, _, end_a, end_b = measure_line(board, x, y, direction, 6, 0)
+            if length == 5:
+                for end_x, end_y in (end_a, end_b):
+                    if board[end_x][end_y] == NOSTONE:
+                        pairs.append((x, y, end_x, end_y))
+        board[x][y] = NOSTONE
+    return pairs
+
+
+def _count_neighbor_stones(board: Board, x: int, y: int) -> int:
+    count = 0
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            if dx == 0 and dy == 0:
+                continue
+            stone = board[x + dx][y + dy]
+            if stone != NOSTONE and stone != BORDER:
+                count += 1
+    return count
 
 
 def _try_add_candidate(
@@ -94,20 +115,3 @@ def _try_add_candidate(
         return
     seen.add(key)
     moves.append(Move((Position(x1, y1), Position(x2, y2))))
-
-
-def _find_completion_pairs(board: Board, cells: list[ScoredCell]) -> list[CompletionPair]:
-    results: list[CompletionPair] = []
-    for score, x, y in cells:
-        if score < SetWeight.LIVE_FIVE:
-            continue
-        for color in (Color.BLACK, Color.WHITE):
-            board[x][y] = color.value
-            for direction in DIRECTIONS:
-                length, _, end_a, end_b = measure_line(board, x, y, direction, 6, 0)
-                if length == 5:
-                    for end_x, end_y in (end_a, end_b):
-                        if board[end_x][end_y] == NOSTONE:
-                            results.append((x, y, end_x, end_y))
-            board[x][y] = NOSTONE
-    return results

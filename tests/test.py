@@ -5,7 +5,7 @@ import subprocess
 import sys
 from contextlib import redirect_stdout
 
-from connect6.board import init_board, _is_board_full, _is_win_by_move, check_game_end, opponent, make_move
+from connect6.board import init_board, _is_board_full, _is_win_by_move, check_game_end, copy_board, opponent, make_move
 from connect6.game_engine import GameEngine
 from connect6.protocol import color_to_name, move2msg, msg2move
 from connect6.evaluation import evaluate, _score_living_sets
@@ -473,6 +473,16 @@ def test_search_blocks_two_stone_threat():
     print("Search Test 12 - Min-max blocks a live four: PASS")
 
 
+def test_search_and_candidates_do_not_mutate_board():
+    board = create_threat_board(4)
+    snapshot = copy_board(board)
+    generate_candidate_moves(board, MAX_CANDIDATE_MOVES)
+    assert board == snapshot
+    search(board, Color.BLACK, 2, create_move_at(9, 13), SearchStats())
+    assert board == snapshot
+    print("Search Test 13 - Search and candidates leave the input board untouched: PASS")
+
+
 # ============================================================
 # PROTOCOL TESTS (GUI CONTRACT, Connect6GUI/engine.py)
 # ============================================================
@@ -733,6 +743,7 @@ if __name__ == "__main__":
     test_candidates_include_completion_pairs()
     test_search_blocks_double_threat()
     test_search_blocks_two_stone_threat()
+    test_search_and_candidates_do_not_mutate_board()
 
     print("\n========== MOVE GENERATION TESTS ==========\n")
     test_candidate_limit()

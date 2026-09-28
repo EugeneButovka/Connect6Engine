@@ -35,7 +35,14 @@ class SetWeight(IntEnum):
     LIVE_FIVE = 10000
 
 
-LIVE_WEIGHTS: Final[tuple[int, ...]] = (0, *(int(weight) for weight in SetWeight))
+LIVE_WEIGHTS: Final[tuple[int, ...]] = (
+    0,
+    int(SetWeight.SINGLE),
+    int(SetWeight.PAIR),
+    int(SetWeight.TRIPLE),
+    int(SetWeight.LIVE_FOUR),
+    int(SetWeight.LIVE_FIVE),
+)
 
 # Lightweight hot-path companions of Position/Move: plain tuples so that
 # construction and hashing stay at C speed inside the search.
@@ -43,6 +50,7 @@ Cell = tuple[int, int]  # (x, y)
 ScoredCell = tuple[int, int, int]  # (score, x, y)
 CellPair = tuple[Cell, Cell]  # order-normalized pair of cells
 CompletionPair = tuple[int, int, int, int]  # (x1, y1, x2, y2)
+RankedPair = tuple[int, int, int]  # (score_sum, index_a, index_b) into the scored-cell list
 
 # Result of one line walk: (length, free, end_a, end_b) — the ends are the
 # cells where each side's walk stopped. A plain tuple: this is the hottest

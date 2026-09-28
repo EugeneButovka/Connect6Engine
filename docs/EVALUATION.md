@@ -320,45 +320,50 @@ list that omits the winning move makes the engine miss wins; a list that omits t
 makes it ignore obvious losses — "not finding an obvious lose situation". The generator is naive
 in mechanism (fixed size, no game-tree reasoning), but tactically literate in what it ranks.
 
+The whole pipeline runs on a `copy_board` scratch copy of the input: the virtual-stone
+placements of stages 1 and 3 place and restore stones only on the scratch, so
+`generate_candidate_moves` never mutates the caller's board. The `search` entry point makes
+its own copy the same way — one 21x21 row-slice copy per call, well under 1% of search time.
+
 The whole pipeline in one picture (`generate_candidate_moves`, one call per internal node):
 
 ```
-                         board position (engine.board)
-                                  |
-         +------------------------+------------------------+
-         |                                                 |
-   empty cell with a stone                     empty cell with no stone
-   in its 8-neighbourhood                      in its 8-neighbourhood
-         |                                                 |
-         v                                                 v
- +------------------+                              fillers (score 0)
- | _score_position  |   attack + defence
- | (stage 1, 6.3)   |   per cell, 4 axes x 2 colours
- +------------------+
-         |
-   scored cells, sorted by score, descending
-         |
-         v
-   top MAX_CANDIDATE_CELLS = 16 cells
-         |
-         +--------------+------------------------------+
-         |                                             |
-         v                                             v
- +------------------+                    +---------------------------+
- | all C(16,2)=120  |                    | _find_completion_pairs    |
- | ranked by sum    |                    | (stage 3, 6.5):           |
- | of cell scores   |                    | virtual 5-run cell + its  |
- | (stage 2, 6.4)   |                    | run-end partner cell      |
- +------------------+                    +---------------------------+
-         |                                             |
-         +---------> injected pairs come first <------+
-                           |
-                           v
-              top MAX_CANDIDATE_MOVES = 30 moves
-                           |
-                           v
-        search / _min_max: one candidate per child,
-        make_move -> recurse -> unmake_move (section 5)
+                          board position (engine.board)
+                                   |  copy_board -> scratch
+                                   |
+          +------------------------+------------------------+
+          |                                                 |
+    empty cell with a stone                     empty cell with no stone
+    in its 8-neighbourhood                      in its 8-neighbourhood
+          |                                                 |
+          v                                                 v
+  +------------------+                              fillers (score 0)
+  | _score_position  |   attack + defence
+  | (stage 1, 6.3)   |   per cell, 4 axes x 2 colours
+  +------------------+
+          |
+    scored cells, sorted by score, descending
+          |
+          +---------------------+----------------------+
+          |                                            |
+          v                                            v
+  top MAX_CANDIDATE_CELLS = 16 cells      cells scoring >= SetWeight.LIVE_FIVE
+          |                                            |
+          v                                            v
+  +------------------+                    +---------------------------+
+  | all C(16,2)=120  |                    | _find_completion_pairs    |
+  | ranked by sum    |                    | (stage 3, 6.5): one      |
+  | (stage 2, 6.4)   |                    | max_free=0 walk per axis  |
+  +------------------+                    +---------------------------+
+          |                                            |
+          +---------> injected pairs come first <-----+
+                            |
+                            v
+               top MAX_CANDIDATE_MOVES = 30 moves
+                            |
+                            v
+         search / _min_max: one candidate per child,
+         make_move -> recurse -> unmake_move (section 5)
 ```
 
 ### 6.1 Why "most stone neighbours" fails
@@ -403,9 +408,11 @@ run's end, so `end_a`/`end_b` *are* the run-end continuation cells — the partn
 would extend a 5-run to a six.
 
 There used to be three copies of this walk in the codebase (the original `measure_line`, the
-inline loops in `_score_position`, and the run walker inside `_find_completion_pairs`). They now
-share one implementation, at a measured ~10% cost on the evaluate hot path — the price of
-having the walk logic stated once.
+inline loops in `_score_position`, and a completion-pair scanner that re-walked every hot
+cell). They now share one implementation, at a measured ~10% cost on the evaluate hot
+path — the price of having the walk logic stated once. The completion-pair pass shrank with
+it: a cell's scalar score already proves whether a virtual 5-run exists (section 6.5), so
+only those few cells are ever re-walked.
 
 ### 6.3 Stage 1 — scoring cells by line potential
 
@@ -455,11 +462,14 @@ board (`create_threat_board(4)`, white four at y 9-12), the winning move is the 
 because the neighbouring `(9,13)` is still empty — so it scores 2 and may not even make the
 top-16 cell pool. No ranking of individually-scored cells reliably produces that pair.
 
-`_find_completion_pairs` closes the gap directly. For every top cell whose virtual placement
-would create a run of **exactly 5** for either colour, it calls `measure_line(..., max_free=0)`
-and reads the run-end cells: each empty end cell is precisely the partner that extends the run
-to six, and the pair `(cell, partner)` is inserted **ahead of** the ranked pairs. Runs of 6+
-are skipped — they complete alone and already score 10000 via stage 1.
+The scalar score itself triggers the fix. A score of at least `SetWeight.LIVE_FIVE` (10000)
+is only reachable when some virtual axis run has length ≥ 5 — eight measurements without one
+max out at `8 x LIVE_FOUR = 8000` — so the scored-cell pass re-walks **only those cells**:
+`_find_completion_pairs(board, x, y)` places the virtual stone and takes one
+`measure_line(..., max_free=0)` walk per axis per colour; a run of **exactly 5** makes the
+walk stop at the run's ends, each empty end cell is precisely the partner that extends the
+run to six, and the pair `(cell, partner)` is inserted **ahead of** the ranked pairs. Runs
+of 6+ yield no pair — they complete alone and already score 10000 via stage 1.
 
 Injection happens at **every** node, not just the root, because the search needs the pair
 twice: the *attacker* must have it among its candidates to play it (at ply 2, refuting a lazy
@@ -477,9 +487,9 @@ chosen.
 
 Candidate generation runs only at internal nodes — 931 of the 27 931 nodes at depth 3 — and each
 call scores only the cells adjacent to stones (tens in a normal mid-game) with walks capped at
-6+6 steps. The stage-3 scan touches only cells scoring ≥ `SetWeight.LIVE_FIVE` (a handful at most) and walks
-4 axes twice per colour. Net effect on the search: the O(B^depth) table in section 5 already
-includes it — depth 3 stays at ~1.3-1.8 s per move.
+6+6 steps. Stage 3 re-walks only cells scoring ≥ `SetWeight.LIVE_FIVE` (a handful per node at
+most), one capped walk per axis per colour. Net effect on the search: the O(B^depth) table in
+section 5 already includes it — depth 3 stays at ~1.3-1.8 s per move.
 
 Three regression tests pin the behaviour (tests/test.py, Search Tests 10-12):
 

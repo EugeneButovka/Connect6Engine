@@ -9,13 +9,13 @@ from .defines import (
     SearchStats,
     SearchResult,
 )
-from .board import is_board_empty, make_move, opponent, unmake_move
+from .board import copy_board, is_board_empty, make_move, opponent, unmake_move
 from .candidates import generate_candidate_moves
 from .evaluation import evaluate
 
 
 def search(board: Board, color: Color, depth: int, pre_move: Move, stats: SearchStats) -> SearchResult:
-    working_board = [row[:] for row in board]
+    working_board = copy_board(board)
     if is_board_empty(working_board):
         center = Move((Position(10, 10), Position(10, 10)))
         return SearchResult(center, 0)

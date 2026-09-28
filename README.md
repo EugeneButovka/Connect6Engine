@@ -54,7 +54,7 @@ connect6/                the engine package
 ├── search.py            naive min-max search (fixed depth, no pruning): one unified `_min_max` loop
 ├── evaluation.py        static evaluation: terminal scores, living-stone-set counting
 ├── candidates.py        candidate generation: line-potential cell scoring, pairing, completion pairs
-├── board.py             board rules: win/draw detection (`check_game_end`), the `measure_line` walk
+├── board.py             board rules: win/draw detection (`check_game_end`), the `measure_line` walk, `copy_board`
 ├── protocol.py          text protocol I/O: `move2msg`/`msg2move`, board printing, logging
 └── defines.py           constants, `Color`/`GameResult` enums, frozen `Position`/`Move`, tuple aliases
 tests/test.py            the test suite

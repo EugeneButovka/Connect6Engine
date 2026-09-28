@@ -21,6 +21,10 @@ def init_board(board: Board) -> None:
             board[i][j] = NOSTONE
 
 
+def copy_board(board: Board) -> Board:
+    return [row[:] for row in board]
+
+
 def make_move(board: Board, move: Move, color: Color) -> None:
     board[move.positions[0].x][move.positions[0].y] = color.value
     board[move.positions[1].x][move.positions[1].y] = color.value
