@@ -1,40 +1,64 @@
-from tools import *
+from dataclasses import dataclass
+
+from defines import (
+    BORDER,
+    Cell,
+    CellPair,
+    CompletionPair,
+    DIRECTIONS,
+    GRID_NUM,
+    LIVE_WEIGHTS,
+    MAXINT,
+    MAX_CANDIDATE_CELLS,
+    MAX_CANDIDATE_MOVES,
+    MININT,
+    NOSTONE,
+    ScoredCell,
+    Board,
+    Color,
+    GameResult,
+    Move,
+    Position,
+)
+from tools import check_game_end, make_move, measure_line, opponent, unmake_move
 
 
-class SearchEngine():
-    def __init__(self):
-        self.m_board = None
-        self.m_chess_type = None
-        self.m_depth = None
-        self.m_total_nodes = 0
+@dataclass(frozen=True, slots=True)
+class SearchResult:
+    move: Move
+    score: int
 
-    def before_search(self, board, color, depth):
-        self.m_board = [row[:] for row in board]
-        self.m_chess_type = color
-        self.m_depth = depth
-        self.m_total_nodes = 0
 
-    def min_max_search(self, depth, ourColor, bestMove, preMove):
+class SearchEngine:
+    def __init__(self) -> None:
+        self.board: Board = []
+        self.color: Color = Color.BLACK
+        self.depth: int = 0
+        self.node_count: int = 0
 
-        self.m_total_nodes += 1
+    def before_search(self, board: Board, color: Color, depth: int) -> None:
+        self.board = [row[:] for row in board]
+        self.color = color
+        self.depth = depth
+        self.node_count = 0
+
+    def min_max_search(self, depth: int, our_color: Color, pre_move: Move) -> SearchResult:
+        self.node_count += 1
         if self.is_first_move():
-            bestMove.positions[0].x = 10
-            bestMove.positions[0].y = 10
-            bestMove.positions[1].x = 10
-            bestMove.positions[1].y = 10
-            return 0
+            center = Move((Position(10, 10), Position(10, 10)))
+            return SearchResult(center, 0)
 
-        candidates = self.generate_candidate_moves(Defines.MAX_CANDIDATE_MOVES)
+        candidates = self.generate_candidate_moves(MAX_CANDIDATE_MOVES)
         if len(candidates) == 0:
-            return self.evaluate(preMove)
+            return SearchResult(pre_move, self.evaluate(pre_move))
 
-        maximizing = ourColor == Defines.BLACK
-        best_score = Defines.MININT if maximizing else Defines.MAXINT
+        maximizing = our_color == Color.BLACK
+        best_score = MININT if maximizing else MAXINT
         best_candidate = candidates[0]
         for candidate in candidates:
-            make_move(self.m_board, candidate, ourColor)
-            score = self.min_max(depth - 1, opponent(ourColor), candidate)
-            unmake_move(self.m_board, candidate)
+            make_move(self.board, candidate, our_color)
+            score = self.min_max(depth - 1, opponent(our_color), candidate)
+            unmake_move(self.board, candidate)
             if maximizing:
                 if score > best_score:
                     best_score = score
@@ -44,30 +68,26 @@ class SearchEngine():
                     best_score = score
                     best_candidate = candidate
 
-        bestMove.positions[0].x = best_candidate.positions[0].x
-        bestMove.positions[0].y = best_candidate.positions[0].y
-        bestMove.positions[1].x = best_candidate.positions[1].x
-        bestMove.positions[1].y = best_candidate.positions[1].y
-        return best_score
+        return SearchResult(best_candidate, best_score)
 
-    def min_max(self, depth, ourColor, preMove):
-        self.m_total_nodes += 1
-        score = self.evaluate(preMove)
-        if score == Defines.MAXINT or score == Defines.MININT:
+    def min_max(self, depth: int, our_color: Color, pre_move: Move) -> int:
+        self.node_count += 1
+        score = self.evaluate(pre_move)
+        if score == MAXINT or score == MININT:
             return score
         if depth <= 0:
             return score
 
-        candidates = self.generate_candidate_moves(Defines.MAX_CANDIDATE_MOVES)
+        candidates = self.generate_candidate_moves(MAX_CANDIDATE_MOVES)
         if len(candidates) == 0:
             return score
 
-        maximizing = ourColor == Defines.BLACK
-        best_score = Defines.MININT if maximizing else Defines.MAXINT
+        maximizing = our_color == Color.BLACK
+        best_score = MININT if maximizing else MAXINT
         for candidate in candidates:
-            make_move(self.m_board, candidate, ourColor)
-            child = self.min_max(depth - 1, opponent(ourColor), candidate)
-            unmake_move(self.m_board, candidate)
+            make_move(self.board, candidate, our_color)
+            child = self.min_max(depth - 1, opponent(our_color), candidate)
+            unmake_move(self.board, candidate)
             if maximizing:
                 if child > best_score:
                     best_score = child
@@ -76,19 +96,19 @@ class SearchEngine():
                     best_score = child
         return best_score
 
-    def is_first_move(self):
-        for i in range(1, len(self.m_board) - 1):
-            for j in range(1, len(self.m_board[i]) - 1):
-                if (self.m_board[i][j] != Defines.NOSTONE):
+    def is_first_move(self) -> bool:
+        for i in range(1, GRID_NUM - 1):
+            for j in range(1, GRID_NUM - 1):
+                if self.board[i][j] != NOSTONE:
                     return False
         return True
 
-    def get_scored_cells(self):
-        scored = []
-        fillers = []
-        for i in range(1, len(self.m_board) - 1):
-            for j in range(1, len(self.m_board[i]) - 1):
-                if self.m_board[i][j] != Defines.NOSTONE:
+    def get_scored_cells(self) -> list[ScoredCell]:
+        scored: list[ScoredCell] = []
+        fillers: list[ScoredCell] = []
+        for i in range(1, GRID_NUM - 1):
+            for j in range(1, GRID_NUM - 1):
+                if self.board[i][j] != NOSTONE:
                     continue
                 if self.count_neighbor_stones(i, j):
                     scored.append((self.score_position(i, j), i, j))
@@ -97,40 +117,38 @@ class SearchEngine():
         scored.sort(reverse=True)
         return scored + fillers
 
-    def count_neighbor_stones(self, x, y):
+    def count_neighbor_stones(self, x: int, y: int) -> int:
         count = 0
         for dx in (-1, 0, 1):
             for dy in (-1, 0, 1):
                 if dx == 0 and dy == 0:
                     continue
-                stone = self.m_board[x + dx][y + dy]
-                if stone != Defines.NOSTONE and stone != Defines.BORDER:
+                stone = self.board[x + dx][y + dy]
+                if stone != NOSTONE and stone != BORDER:
                     count += 1
         return count
 
-    def score_position(self, x, y):
-        board = self.m_board
+    def score_position(self, x: int, y: int) -> int:
+        board = self.board
         total = 0
-        position = StonePosition(x, y)
-        total = 0
-        for color in (Defines.BLACK, Defines.WHITE):
-            board[x][y] = color
+        for color in (Color.BLACK, Color.WHITE):
+            board[x][y] = color.value
             value = 0
-            for direction in Defines.DIRECTIONS:
-                length, free, _, _ = measure_line(board, position, direction, 6, 6)
+            for direction in DIRECTIONS:
+                length, free, _, _ = measure_line(board, x, y, direction, 6, 6)
                 if length + free >= 6:
-                    value += Defines.LIVE_WEIGHTS[min(length, 5)]
-            board[x][y] = Defines.NOSTONE
+                    value += LIVE_WEIGHTS[min(length, 5)]
+            board[x][y] = NOSTONE
             total += value
         return total
 
-    def generate_candidate_moves(self, limit):
-        cells = self.get_scored_cells()[:Defines.MAX_CANDIDATE_CELLS]
-        moves = []
-        seen = set()
+    def generate_candidate_moves(self, limit: int) -> list[Move]:
+        cells = self.get_scored_cells()[:MAX_CANDIDATE_CELLS]
+        moves: list[Move] = []
+        seen: set[CellPair] = set()
         for x1, y1, x2, y2 in self.find_completion_pairs(cells):
             self.try_add_candidate(moves, seen, limit, x1, y1, x2, y2)
-        pairs = []
+        pairs: list[tuple[int, int, int]] = []
         for i in range(len(cells)):
             for j in range(i + 1, len(cells)):
                 pairs.append((cells[i][0] + cells[j][0], i, j))
@@ -141,64 +159,64 @@ class SearchEngine():
             self.try_add_candidate(moves, seen, limit, cells[i][1], cells[i][2], cells[j][1], cells[j][2])
         return moves
 
-    def try_add_candidate(self, moves, seen, limit, x1, y1, x2, y2):
+    def try_add_candidate(
+        self,
+        moves: list[Move],
+        seen: set[CellPair],
+        limit: int,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+    ) -> None:
         if len(moves) >= limit:
             return
-        key = tuple(sorted(((x1, y1), (x2, y2))))
+        a = (x1, y1)
+        b = (x2, y2)
+        key = (a, b) if a <= b else (b, a)
         if key in seen:
             return
         seen.add(key)
-        move = StoneMove()
-        move.positions[0] = StonePosition(x1, y1)
-        move.positions[1] = StonePosition(x2, y2)
-        moves.append(move)
+        moves.append(Move((Position(x1, y1), Position(x2, y2))))
 
-    def find_completion_pairs(self, cells):
-        board = self.m_board
-        results = []
+    def find_completion_pairs(self, cells: list[ScoredCell]) -> list[CompletionPair]:
+        board = self.board
+        results: list[CompletionPair] = []
         for score, x, y in cells:
-            if score < Defines.LIVE_WEIGHTS[5]:
+            if score < LIVE_WEIGHTS[5]:
                 continue
-            position = StonePosition(x, y)
-            for color in (Defines.BLACK, Defines.WHITE):
-                board[x][y] = color
-                for direction in Defines.DIRECTIONS:
-                    length, _, end_a, end_b = measure_line(board, position, direction, 6, 0)
+            for color in (Color.BLACK, Color.WHITE):
+                board[x][y] = color.value
+                for direction in DIRECTIONS:
+                    length, _, end_a, end_b = measure_line(board, x, y, direction, 6, 0)
                     if length == 5:
                         for end_x, end_y in (end_a, end_b):
-                            if board[end_x][end_y] == Defines.NOSTONE:
+                            if board[end_x][end_y] == NOSTONE:
                                 results.append((x, y, end_x, end_y))
-                board[x][y] = Defines.NOSTONE
+                board[x][y] = NOSTONE
         return results
 
-    def evaluate(self, preMove):
-        result = check_game_end(self.m_board, preMove)
-        if result == Defines.WIN:
-            winner = self.m_board[preMove.positions[0].x][preMove.positions[0].y]
-            if winner == Defines.BLACK:
-                return Defines.MAXINT
-            return Defines.MININT
-        if result == Defines.DRAW:
+    def evaluate(self, pre_move: Move) -> int:
+        result = check_game_end(self.board, pre_move)
+        if result == GameResult.WIN:
+            winner = self.board[pre_move.positions[0].x][pre_move.positions[0].y]
+            if winner == Color.BLACK:
+                return MAXINT
+            return MININT
+        if result == GameResult.DRAW:
             return 0
-        return self.count_live_sets(Defines.BLACK) - self.count_live_sets(Defines.WHITE)
+        return self.count_live_sets(Color.BLACK) - self.count_live_sets(Color.WHITE)
 
-    def count_live_sets(self, color):
+    def count_live_sets(self, color: Color) -> int:
         value = 0
-        for x in range(1, Defines.GRID_NUM - 1):
-            for y in range(1, Defines.GRID_NUM - 1):
-                if self.m_board[x][y] != color:
+        for x in range(1, GRID_NUM - 1):
+            for y in range(1, GRID_NUM - 1):
+                if self.board[x][y] != color:
                     continue
-                position = StonePosition(x, y)
-                for direction in Defines.DIRECTIONS:
-                    if self.m_board[x - direction[0]][y - direction[1]] == color:
+                for direction in DIRECTIONS:
+                    if self.board[x - direction[0]][y - direction[1]] == color.value:
                         continue
-                    position = StonePosition(x, y)
-                    length, free, _, _ = measure_line(self.m_board, position, direction)
+                    length, free, _, _ = measure_line(self.board, x, y, direction)
                     if length + free >= 6:
-                        value += Defines.LIVE_WEIGHTS[min(length, 5)]
+                        value += LIVE_WEIGHTS[min(length, 5)]
         return value
-
-
-def flush_output():
-    import sys
-    sys.stdout.flush()

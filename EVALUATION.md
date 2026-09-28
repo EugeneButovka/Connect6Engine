@@ -1,9 +1,9 @@
 # Static Evaluation
 
-`SearchEngine.evaluate(preMove)` turns any board position into a single number that the min-max search uses to compare branches. It runs in the **fixed first-player frame**: the score is always written from Black's point of view — positive means Black (the first player) is better, negative means White is better. The search tree never flips the evaluation when the engine plays White; it simply alternates max/min by turn.
+`SearchEngine.evaluate(pre_move)` turns any board position into a single number that the min-max search uses to compare branches. It runs in the **fixed first-player frame**: the score is always written from Black's point of view — positive means Black (the first player) is better, negative means White is better. The search tree never flips the evaluation when the engine plays White; it simply alternates max/min by turn.
 
 ```
-score = evaluate(preMove)
+score = evaluate(pre_move)
 ```
 
 | Situation                        | Score               |
@@ -15,11 +15,11 @@ score = evaluate(preMove)
 
 ## 1. Terminal evaluation
 
-The method first asks `check_game_end(board, preMove)` (tools.py) whether the *last move* ended the game. In Connect6 only the two stones just placed can create a new six, so looking at `preMove` alone is sound — and cheap. The winner's color is read straight from `preMove`'s stone, since `preMove` is by definition the winning move.
+The method first asks `check_game_end(board, pre_move)` (tools.py) whether the *last move* ended the game. In Connect6 only the two stones just placed can create a new six, so looking at `pre_move` alone is sound — and cheap. The winner's color is read straight from `pre_move`'s stone, since `pre_move` is by definition the winning move.
 
 ```
 row 10:   . . O O O O O O . .        black just extended 4 to 6
-                                    evaluate(preMove) -> +20000
+                                    evaluate(pre_move) -> +20000
 ```
 
 A full board with no six-in-line returns `0` — the draw score.
@@ -139,7 +139,7 @@ This is what makes move choice sensible without any hand-written rules: extendin
 
 **The index is clamped** (`min(length, 5)`): a 6-run means the game is over and the terminal branch fires first — the clamp is only crash-proofing for boards constructed by hand or by tests.
 
-**Tuning.** The base (10) is an engineering choice, not a law: base 2 would make sets more comparable (a live-4 ≈ eight live-2s), base 100 would make threats nearly absolute. The constant lives in `Defines` precisely so it can be retuned once the recursive search exists and the effects can be measured with `perf_depth.ipynb`.
+**Tuning.** The base (10) is an engineering choice, not a law: base 2 would make sets more comparable (a live-4 ≈ eight live-2s), base 100 would make threats nearly absolute. The constant lives in `defines.py` precisely so it can be retuned once the recursive search exists and the effects can be measured with `perf_depth.ipynb`.
 
 ## 3. Worked examples
 
@@ -175,20 +175,83 @@ The evaluation function is consumed by the naive search tree method (`SearchEngi
    proposed candidate (`generate_candidate_moves(MAX_CANDIDATE_MOVES)`) and picks the move with the
    best `min_max` score: Black-to-move nodes **maximize**, White-to-move nodes **minimize** —
    the same fixed first-player frame as the evaluation itself, so no sign flipping anywhere.
-2. **Terminal nodes** — every node first runs `evaluate(preMove)`; a game-over score
+2. **Terminal nodes** — every node first runs `evaluate(pre_move)`; a game-over score
    (`MAXINT`/`MININT`) stops the recursion immediately: a completed six is a leaf no matter the
    remaining depth.
 3. **Depth cutoff** — at `depth == 0` the node returns the *static evaluation* of the position.
    This is the fixed exploration depth the spec requires: it bounds the tree at
    `O(B^depth)` nodes and is what the `depth d` command controls (default 3).
 4. **Traversal** — children are explored with `make_move`/`unmake_move` on the engine's private
-   board copy, alternating colors every ply; `preMove` is always the move that led to the node,
+   board copy, alternating colors every ply; `pre_move` is always the move that led to the node,
    so terminal detection only ever needs to look at the last two stones placed.
 
-The call graph of one search:
+### From command to reply
+
+What happens on one `move XXXX` command (`next` takes the same path after toggling the color;
+`new black` prints the center opening `move JJ` and waits):
 
 ```
-min_max_search(depth, bestMove, preMove)         root: ourColor to move
+main.py
+  |
+  v
+GameEngine.run()  -- stdin/stdout command loop --         game_engine.py
+  |
+  |  "move XXXX" --> msg2move()                            tools.py
+  |                       |
+  |                       v
+  |        make_move(board, move, opponent color)
+  |                       |
+  |                       v
+  |        check_game_end()  -- Human wins / Draw -> announce, exit
+  |                       |
+  |                       v
+  |        search_a_move(color, pre_move)
+  |                       |
+  |        SearchEngine.before_search(board, color, depth) search_engine.py
+  |                       |
+  |                       v
+  |        min_max_search(depth, our_color, pre_move)
+  |                       |
+  |        empty board? -- yes --> center opening (10,10)
+  |                       |
+  |                       v
+  |        generate_candidate_moves(30)   <-- pipeline: section 6
+  |                       |
+  |       +-- for each candidate move: ----------+
+  |       |     make_move()                       |
+  |       |        |                              |
+  |       |        v                              |
+  |       |    min_max(depth-1, opponent, move)   |  recursion
+  |       |        |                              |
+  |       |        +--> evaluate(pre_move)         |
+  |       |        |    |-- check_game_end        |
+  |       |        |    |    +-> is_win_by_move   |
+  |       |        |    |         +-> measure_line
+  |       |        |    +-> count_live_sets x 2   |
+  |       |        |         +-> measure_line     |
+  |       |        |                              |
+  |       |        +--> depth 0 / game over       |
+  |       |        |         -> return score      |
+  |       |        +--> generate_candidate_moves |
+  |       |                  -> recurse          |
+  |       |                                     |
+  |       |    unmake_move()                     |
+  |       +--------------------------------------+
+  |                       |
+  |        best candidate -> bestMove
+  |                       |
+  |        make_move(bestMove)  +  print "move XXXX"  <-- move2msg()
+  |                       |
+  |                       v
+  |        check_game_end()  -- AI wins / Draw -> announce, exit
+  v
+next stdin command
+```
+
+Zooming into the search itself, the call graph of one search:
+
+```
+min_max_search(depth, our_color, pre_move)         root: color to move
     |
     |-- is_first_move?  -- yes --> center opening (10,10), return
     |
@@ -197,7 +260,7 @@ min_max_search(depth, bestMove, preMove)         root: ourColor to move
     +-- for each candidate move:
           make_move() -> min_max(depth-1, opponent, move) -> unmake_move()
                              |
-                             |-- evaluate(preMove)
+                             |-- evaluate(pre_move)
                              |      |-- check_game_end -> is_win_by_move
                              |      |                     |
                              |      |                     v
@@ -250,7 +313,7 @@ in mechanism (fixed size, no game-tree reasoning), but tactically literate in wh
 The whole pipeline in one picture (`generate_candidate_moves`, one call per internal node):
 
 ```
-                         board position (m_board)
+                         board position (engine.board)
                                   |
          +------------------------+------------------------+
          |                                                 |
@@ -315,7 +378,7 @@ critical pair like `(cells[5], cells[9])` is then unreachable, whatever the rank
 
 All line reasoning in the engine reduces to one question: *if a stone of colour c sat on this
 cell, how long would its contiguous run be, and how much empty room lies beyond it?* One
-function answers it for everyone — `measure_line(board, position, direction, max_length, max_free)`
+function answers it for everyone — `measure_line(board, x, y, direction, max_length, max_free)`
 (tools.py):
 
 - it starts **at the stone itself** (counting it), then walks each direction along the axis:

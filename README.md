@@ -53,70 +53,9 @@ Positions use two letters each (column `A`–`S`, row `A`–`S`), e.g. `JJ` for 
 | `game_engine.py`  | Game loop, command protocol, move handling, game-end announcements.     |
 | `search_engine.py`| Naive min-max search (fixed depth, no pruning) guided by the static evaluation of living stone sets ([EVALUATION.md](EVALUATION.md)). Candidates come from cells scored by line potential (attack + defence, `MAX_CANDIDATE_CELLS` top cells paired into `MAX_CANDIDATE_MOVES` moves, plus injected two-stone completion pairs), so wins and forced blocks are always considered. |
 | `tools.py`        | Board utilities: win/draw detection (`check_game_end`), board printing, move I/O. |
-| `defines.py`     | Constants and core data types (`StoneMove`, `StonePosition`).            |
+| `defines.py`     | Module constants, `Color`/`GameResult` enums, frozen `Position`/`Move` dataclasses. |
 
-### Call flow
-
-What happens on one `move XXXX` command (`next` takes the same path after toggling the color;
-`new black` prints the center opening `move JJ` and waits):
-
-```
-main.py
-  |
-  v
-GameEngine.run()  -- stdin/stdout command loop --         game_engine.py
-  |
-  |  "move XXXX" --> msg2move()                            tools.py
-  |                       |
-  |                       v
-  |        make_move(m_board, move, opponent color)
-  |                       |
-  |                       v
-  |        check_game_end()  -- Human wins / Draw -> announce, exit
-  |                       |
-  |                       v
-  |        search_a_move(color, preMove)
-  |                       |
-  |        SearchEngine.before_search(board, color, depth) search_engine.py
-  |                       |
-  |                       v
-  |        min_max_search(depth, ...)
-  |                       |
-  |        empty board? -- yes --> center opening (10,10)
-  |                       |
-  |                       v
-  |        generate_candidate_moves(30)   <-- pipeline: EVALUATION.md 6
-  |                       |
-  |       +-- for each candidate move: ----------+
-  |       |     make_move()                       |
-  |       |        |                              |
-  |       |        v                              |
-  |       |    min_max(depth-1, opponent, move)   |  recursion
-  |       |        |                              |
-  |       |        +--> evaluate(preMove)         |
-  |       |        |    |-- check_game_end        |
-  |       |        |    |    +-> is_win_by_move   |
-  |       |        |    |         +-> measure_line
-  |       |        |    +-> count_live_sets x 2   |
-  |       |        |         +-> measure_line     |
-  |       |        |                              |
-  |       |        +--> depth 0 / game over       |
-  |       |        |         -> return score      |
-  |       |        +--> generate_candidate_moves |
-  |       |                  -> recurse          |
-  |       |                                     |
-  |       |    unmake_move()                     |
-  |       +--------------------------------------+
-  |                       |
-  |        best candidate -> bestMove
-  |                       |
-  |        make_move(bestMove)  +  print "move XXXX"  <-- move2msg()
-  |                       |
-  |                       v
-  |        check_game_end()  -- AI wins / Draw -> announce, exit
-  v
-next stdin command
-```
+The full call flow of a `move` command — from stdin through the search loop to the printed reply — is diagrammed in [EVALUATION.md, section 5](EVALUATION.md#5-the-evaluator-inside-the-naive-min-max-search).
 
 ## Tests
 
@@ -125,6 +64,14 @@ uv run test.py
 ```
 
 Covers board state, win/draw termination, color helpers, static evaluation, candidate generation and min-max search (including forced-block regression tests).
+
+## Type checking
+
+```sh
+uv run mypy
+```
+
+The codebase is fully typed: `Color`/`GameResult` enums, frozen `Position`/`Move` dataclasses, annotated functions and attributes (`pyproject.toml` pins the checked files).
 
 ## Benchmarks
 
