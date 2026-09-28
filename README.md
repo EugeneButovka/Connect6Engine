@@ -43,24 +43,33 @@ Once running, the engine accepts the following commands:
 | `depth d`    | Set the min-max search depth (1–9, default 3).                          |
 | `help`       | Print the command list.                                                 |
 
-Positions use two letters each (column `A`–`S`, row `A`–`S`), e.g. `JJ` for the center or `CCDD` for a pair of stones. When the game ends, the engine announces the winner with their color (`AI wins with white!` / `Human wins with black!`) or a draw, and exits.
+Positions use two letters each (column `A`–`S`, row `A`–`S`), e.g. `JJ` for the center or `CCDD` for a pair of stones. When the game ends, the engine announces the winner with their color (`AI wins with white!` / `Human wins with black!`) or a draw, and exits. Every command is appended to `tia-engine.log`; malformed commands are additionally reported on stderr and ignored — the engine keeps running (the stdout protocol stream stays clean).
 
 ## Architecture
 
-| File              | Purpose                                                                 |
-|-------------------|-------------------------------------------------------------------------|
-| `main.py`         | Entry point; creates and runs the engine.                               |
-| `game_engine.py`  | Game loop, command protocol, move handling, game-end announcements.     |
-| `search_engine.py`| Naive min-max search (fixed depth, no pruning) guided by the static evaluation of living stone sets ([EVALUATION.md](EVALUATION.md)). Candidates come from cells scored by line potential (attack + defence, `MAX_CANDIDATE_CELLS` top cells paired into `MAX_CANDIDATE_MOVES` moves, plus injected two-stone completion pairs), so wins and forced blocks are always considered. |
-| `tools.py`        | Board utilities: win/draw detection (`check_game_end`), board printing, move I/O. |
-| `defines.py`     | Module constants, `Color`/`GameResult` enums, frozen `Position`/`Move` dataclasses. |
+```
+main.py                  entry point (thin: creates and runs the engine)
+connect6/                the engine package
+├── game_engine.py       game loop, command protocol, move handling, game-end announcements
+├── search.py            naive min-max search (fixed depth, no pruning): one unified `_min_max` loop
+├── evaluation.py        static evaluation: terminal scores, living-stone-set counting
+├── candidates.py        candidate generation: line-potential cell scoring, pairing, completion pairs
+├── board.py             board rules: win/draw detection (`check_game_end`), the `measure_line` walk
+├── protocol.py          text protocol I/O: `move2msg`/`msg2move`, board printing, logging
+└── defines.py           constants, `Color`/`GameResult` enums, frozen `Position`/`Move`, tuple aliases
+tests/test.py            the test suite
+benchmarks/perf_depth.ipynb  depth-vs-time benchmark
+docs/EVALUATION.md       evaluation & search documentation
+```
 
-The full call flow of a `move` command — from stdin through the search loop to the printed reply — is diagrammed in [EVALUATION.md, section 5](EVALUATION.md#5-the-evaluator-inside-the-naive-min-max-search).
+- `search.py` is guided by the static evaluation of living stone sets and by candidate generation — cells scored by line potential (attack + defence, `MAX_CANDIDATE_CELLS` top cells paired into `MAX_CANDIDATE_MOVES` moves, plus injected two-stone completion pairs) — so wins and forced blocks are always considered ([docs/EVALUATION.md](docs/EVALUATION.md)).
+
+The full call flow of a `move` command — from stdin through the search loop to the printed reply — is diagrammed in [docs/EVALUATION.md, section 5](docs/EVALUATION.md#5-the-evaluator-inside-the-naive-min-max-search).
 
 ## Tests
 
 ```sh
-uv run test.py
+uv run tests/test.py
 ```
 
 Covers board state, win/draw termination, color helpers, static evaluation, candidate generation and min-max search (including forced-block regression tests).
@@ -75,6 +84,6 @@ The codebase is fully typed: `Color`/`GameResult` enums, frozen `Position`/`Move
 
 ## Benchmarks
 
-Open `perf_depth.ipynb` (Jupyter, or PyCharm's built-in notebook support) and run all cells (~1 minute: the depth-4 search dominates). It measures `min_max_search` execution time per search depth (1–4, one run each) on a fixed mid-game board and plots depth vs time against the theoretical `O(B^depth)` curve.
+Open `benchmarks/perf_depth.ipynb` (Jupyter, or PyCharm's built-in notebook support) and run all cells (~1 minute: the depth-4 search dominates). It measures `search` execution time per search depth (1–4, one run each) on a fixed mid-game board and plots depth vs time against the theoretical `O(B^depth)` curve.
 
-See [EVALUATION.md](EVALUATION.md) for a full walkthrough of the evaluation function and living-set counting, with worked examples.
+See [docs/EVALUATION.md](docs/EVALUATION.md) for a full walkthrough of the evaluation function and living-set counting, with worked examples.

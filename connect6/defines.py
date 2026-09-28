@@ -3,7 +3,6 @@ from enum import Enum, IntEnum
 from typing import Final
 
 GRID_NUM: Final = 21  # Size of the board array: 19x19 cells plus a border ring.
-GRID_COUNT: Final = 361  # Number of playable cells.
 MSG_LENGTH: Final = 512  # Max length of one protocol message.
 LOG_FILE: Final = "tia-engine.log"
 ENGINE_NAME: Final = "TIA.Connect6_end_game_detect_Butovka_Hasnaat"
@@ -25,8 +24,18 @@ BORDER: Final = 3
 Direction = tuple[int, int]
 DIRECTIONS: Final[tuple[Direction, ...]] = ((1, 0), (0, 1), (1, 1), (1, -1))
 
-# Value of a living set of stones, indexed by its length (capped at 5).
-LIVE_WEIGHTS: Final = (0, 1, 10, 100, 1000, 10000)
+# Value of a living set of stones, named by tier. SetWeight names the tiers;
+# LIVE_WEIGHTS is what the search hot paths index by run length, holding plain
+# ints — enum members in that table would slow down the inner loops.
+class SetWeight(IntEnum):
+    SINGLE = 1
+    PAIR = 10
+    TRIPLE = 100
+    LIVE_FOUR = 1000
+    LIVE_FIVE = 10000
+
+
+LIVE_WEIGHTS: Final[tuple[int, ...]] = (0, *(int(weight) for weight in SetWeight))
 
 # Lightweight hot-path companions of Position/Move: plain tuples so that
 # construction and hashing stay at C speed inside the search.
@@ -34,6 +43,11 @@ Cell = tuple[int, int]  # (x, y)
 ScoredCell = tuple[int, int, int]  # (score, x, y)
 CellPair = tuple[Cell, Cell]  # order-normalized pair of cells
 CompletionPair = tuple[int, int, int, int]  # (x1, y1, x2, y2)
+
+# Result of one line walk: (length, free, end_a, end_b) — the ends are the
+# cells where each side's walk stopped. A plain tuple: this is the hottest
+# construct in the engine, named-tuple creation costs ~18x more.
+Line = tuple[int, int, Cell, Cell]
 
 
 class Color(IntEnum):
@@ -59,3 +73,14 @@ class Position:
 @dataclass(frozen=True, slots=True)
 class Move:
     positions: tuple[Position, Position]
+
+
+@dataclass(frozen=True, slots=True)
+class SearchResult:
+    move: Move
+    score: int
+
+
+@dataclass(slots=True)
+class SearchStats:
+    node_count: int = 0
