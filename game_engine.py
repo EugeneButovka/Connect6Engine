@@ -6,13 +6,16 @@ import time
 
 class GameEngine:
     def __init__(self, name=Defines.ENGINE_NAME):
+        self.m_engine_name = "Tia.Connect6Engine"
         if name and len(name) > 0:
             if len(name) < Defines.MSG_LENGTH:
                 self.m_engine_name = name
             else:
                 print(f"Too long Engine Name: {name}, should be less than: {Defines.MSG_LENGTH}")
         self.m_alphabeta_depth = 6
-        self.m_board = t = [ [0]*Defines.GRID_NUM for i in range(Defines.GRID_NUM)]
+        self.m_chess_type = None
+        self.m_vcf = False
+        self.m_board = [[0] * Defines.GRID_NUM for _ in range(Defines.GRID_NUM)]
         self.init_game()
         self.m_search_engine = SearchEngine()
         self.m_best_move = StoneMove()
