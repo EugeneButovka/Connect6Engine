@@ -1,43 +1,48 @@
 class Defines:
-    GRID_NUM=21          # Number of the board, 19*19 plus edges.
-    GRID_COUNT=361         # Sum of the points in the board.
-    BLACK=1           # Black flag in the board.
-    WHITE=2           # White flag in the board.
-    BORDER=3          # Border flag in the board.
-    NOSTONE=0           # Empty flag.
-    MSG_LENGTH=512 #Tamaño del mensaje
-    GRID_NUM=21 #Number of the board, 19*19 plus edges.
-    GRID_COUNT=361 #Sum of the points in the board.
-    LOG_FILE="tia-engine.log"
-    ENGINE_NAME="TIA.Connect6_end_game_detect_Butovka_Hasnaat"
+    GRID_NUM = 21  # Number of the board, 19*19 plus edges.
+    GRID_COUNT = 361  # Sum of the points in the board.
+    BLACK = 1  # Black flag in the board.
+    WHITE = 2  # White flag in the board.
+    BORDER = 3  # Border flag in the board.
+    NOSTONE = 0  # Empty flag.
+    MSG_LENGTH = 512  #Tamaño del mensaje
+    GRID_NUM = 21  #Number of the board, 19*19 plus edges.
+    GRID_COUNT = 361  #Sum of the points in the board.
+    LOG_FILE = "tia-engine.log"
+    ENGINE_NAME = "TIA.Connect6_end_game_detect_Butovka_Hasnaat"
     # Max values in the evaluation.
-    MAXINT=20000
-    MININT=-20000
+    MAXINT = 20000
+    MININT = -20000
     # Game end results.
-    WIN=1
-    DRAW=2
+    WIN = 1
+    DRAW = 2
     # Max amount of candidate moves generated for the search.
-    MAX_CANDIDATE_MOVES=20
+    MAX_CANDIDATE_MOVES = 30
+    # Max amount of single cells the candidate pair generation draws from.
+    MAX_CANDIDATE_CELLS = 16
     # Default depth of the min-max exploration tree.
-    ALPHABETA_DEPTH=3
+    ALPHABETA_DEPTH = 3
     # Line axes on the board; each vector is walked both ways.
-    DIRECTIONS=[(1, 0), (0, 1), (1, 1), (1, -1)]
+    DIRECTIONS = [(1, 0), (0, 1), (1, 1), (1, -1)]
     # Value of a living set of stones, indexed by its length.
-    LIVE_WEIGHTS=[0, 1, 10, 100, 1000, 10000]
+    LIVE_WEIGHTS = [0, 1, 10, 100, 1000, 10000]
+
 
 class StonePosition:
-    def __init__(self,x,y):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
 
+
 class StoneMove:
     def __init__(self):
-        self.positions = [StonePosition(0,0),StonePosition(0,0)]
+        self.positions = [StonePosition(0, 0), StonePosition(0, 0)]
         self.score = 0
+
 
 # One point and its value.
 class Chess:
-    def __init__(x,y,score):
+    def __init__(x, y, score):
         self.x = x
         self.y = y
         self.score = score

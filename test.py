@@ -1,4 +1,4 @@
-from tools import init_board, is_board_full, is_win_by_move, check_game_end, color_to_name, opponent, measure_line
+from tools import init_board, is_board_full, is_win_by_move, check_game_end, color_to_name, opponent, measure_line, make_move
 from defines import Defines, StoneMove
 from search_engine import SearchEngine
 
@@ -427,6 +427,66 @@ def test_search_depth_grows_nodes():
     print("Search Test 9 - Deeper searches explore more nodes: PASS")
 
 
+def create_threat_board(run_length):
+    board = create_empty_board()
+    for y in range(9, 9 + run_length):
+        board[9][y] = Defines.WHITE
+    board[12][12] = Defines.BLACK
+    board[12][13] = Defines.BLACK
+    return board
+
+
+def color_can_complete_six(board, color):
+    for x in range(1, Defines.GRID_NUM - 6):
+        for y in range(1, Defines.GRID_NUM - 6):
+            for dx, dy in Defines.DIRECTIONS:
+                if not (1 <= x + 5 * dx <= Defines.GRID_NUM - 2 and 1 <= y + 5 * dy <= Defines.GRID_NUM - 2):
+                    continue
+                stones = empties = 0
+                blocked = False
+                for k in range(6):
+                    cell = board[x + k * dx][y + k * dy]
+                    if cell == color:
+                        stones += 1
+                    elif cell == Defines.NOSTONE:
+                        empties += 1
+                    else:
+                        blocked = True
+                        break
+                if not blocked and stones >= 4 and stones + empties == 6:
+                    return True
+    return False
+
+
+def test_candidates_include_completion_pairs():
+    board = create_threat_board(4)
+    engine = create_search_engine(board, Defines.WHITE)
+    candidates = engine.generate_candidate_moves(Defines.MAX_CANDIDATE_MOVES)
+    pairs = {frozenset(placed_cells(move)) for move in candidates}
+    assert frozenset({(9, 13), (9, 14)}) in pairs
+    print("Search Test 10 - Two-stone completion pairs are generated: PASS")
+
+
+def test_search_blocks_double_threat():
+    board = create_threat_board(5)
+    engine = create_search_engine(board, Defines.BLACK)
+    best = StoneMove()
+    engine.alpha_beta_search(2, Defines.MININT, Defines.MAXINT, Defines.BLACK, best, create_move_at(9, 13))
+    make_move(board, best, Defines.BLACK)
+    assert not color_can_complete_six(board, Defines.WHITE)
+    print("Search Test 11 - Min-max blocks a live five on both ends: PASS")
+
+
+def test_search_blocks_two_stone_threat():
+    board = create_threat_board(4)
+    engine = create_search_engine(board, Defines.BLACK)
+    best = StoneMove()
+    engine.alpha_beta_search(2, Defines.MININT, Defines.MAXINT, Defines.BLACK, best, create_move_at(9, 12))
+    make_move(board, best, Defines.BLACK)
+    assert not color_can_complete_six(board, Defines.WHITE)
+    print("Search Test 12 - Min-max blocks a live four: PASS")
+
+
 # ============================================================
 # RUN ALL TESTS
 # ============================================================
@@ -472,6 +532,9 @@ if __name__ == "__main__":
     test_search_finds_winning_move()
     test_search_blocks_threat()
     test_search_depth_grows_nodes()
+    test_candidates_include_completion_pairs()
+    test_search_blocks_double_threat()
+    test_search_blocks_two_stone_threat()
 
     print("\n========== MOVE GENERATION TESTS ==========\n")
     test_candidate_limit()

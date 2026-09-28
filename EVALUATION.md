@@ -185,25 +185,165 @@ The evaluation function is consumed by the naive search tree method (`SearchEngi
    board copy, alternating colors every ply; `preMove` is always the move that led to the node,
    so terminal detection only ever needs to look at the last two stones placed.
 
-Because there is no pruning, every node expands all 20 candidates and the tree grows as `20^depth`.
+### Candidate selection
+
+How `generate_candidate_moves` builds the fixed-size list — cell scoring by line potential,
+pairing by summed score, and injected two-stone completion pairs — is documented in
+[section 6](#6-candidate-selection).
+
+Because there is no pruning, every node expands all 30 candidates and the tree grows as `30^depth`.
 Measured on the notebook's benchmark position (mid-game board, CPython 3.14):
 
 | depth | nodes   | min time      |
 |-------|---------|---------------|
-| 1     | 21      | ~1 ms         |
-| 2     | 421     | ~20 ms        |
-| 3     | 8 421   | ~0.45 s       |
-| 4     | 168 421 | ~9 s          |
-| 5     | 3.4 M   | ~3 min        |
-| 6     | 68 M    | ~1 hour (do not use) |
+| 1     | 31      | ~2 ms         |
+| 2     | 931     | ~57 ms        |
+| 3     | 27 931  | ~1.8 s        |
+| 4     | ~835 k  | ~1 min (do not use) |
+| 5     | ~25 M   | ~30 min (do not use) |
 
 Practical consequence: with plain min-max the playable range is `depth 2`-`3`; the engine's default
-depth of 6 is only feasible once alpha-beta pruning lands (pruning cut depth 6 to ~144k nodes / ~11 s
-in an earlier experiment). The `perf_depth.ipynb` notebook documents this scaling: a controlled
-branching-factor simulation of the same recursion, plus measurements of the real search at low depths.
+depth of 3 sits at the top of it. The `perf_depth.ipynb` notebook documents this scaling: measurements
+of the real search at depths 1-3 with the theoretical `O(B^depth)` model overlaid.
 
-## 6. Known limitations
+## 6. Candidate selection
+
+The spec requires a *fixed-size* list of proposed moves but says nothing about which moves. The
+contents of that list decide everything: min-max can only choose among moves it is offered. A
+list that omits the winning move makes the engine miss wins; a list that omits the forced block
+makes it ignore obvious losses — "not finding an obvious lose situation". The generator is naive
+in mechanism (fixed size, no game-tree reasoning), but tactically literate in what it ranks.
+
+### 6.1 Why "most stone neighbours" fails
+
+The cheapest possible ranking — sort empty cells by how many stones sit in the surrounding
+8 cells — fails on exactly the cells that decide games. Consider this position (the regression
+test board, `create_threat_board(5)`):
+
+```
+row 9:    . W W W W W .        white five at y 9-13, both ends open: (9,8) and (9,14)
+row 12:   . . B B . .          black decoys at (12,12), (12,13)
+```
+
+The forced reply is `(9,8)+(9,14)` — one stone on each end kills the threat. But the two block
+cells have **one stone neighbour each**, while cells squeezed inside the stone clusters have
+three or four. Under an adjacency sort the block cells rank near the bottom of the board; with a
+30-move cap they never appear in the candidate list at all. Observed with the adjacency-based
+generator on this exact board: the engine replied `(8,10)+(8,11)` — a meaningless move — because
+the blocking cells were never on its menu. The search is not stupid; it is blind.
+
+A second failure mode is structural. The straightforward pairing loop — take the sorted cells,
+pair `cells[0]` with `cells[1]`, `cells[0]` with `cells[2]`, ... until the limit is reached —
+makes the single top-ranked cell an *anchor*: every generated move contains it. A tactically
+critical pair like `(cells[5], cells[9])` is then unreachable, whatever the ranking.
+
+### 6.2 The walk primitive
+
+All line reasoning in the engine reduces to one question: *if a stone of colour c sat on this
+cell, how long would its contiguous run be, and how much empty room lies beyond it?* One
+function answers it for everyone — `measure_line(board, position, direction, max_length, max_free)`
+(tools.py):
+
+- it starts **at the stone itself** (counting it), then walks each direction along the axis:
+  first the contiguous same-colour run, then the contiguous empty cells ("free");
+- `max_length` / `max_free` bound the walks (default: unbounded — `is_win_by_move` and
+  `count_live_sets` use it that way). The bounds exist for the scoring hot path: no scoring
+  decision ever needs more than a six-window, so walks are capped at 6/6 there;
+- it returns `(length, free, end_a, end_b)` — the cells where each side's walk stopped.
+
+The end cells exist for one consumer: called with `max_free=0`, the walk stops exactly at the
+run's end, so `end_a`/`end_b` *are* the run-end continuation cells — the partner stones that
+would extend a 5-run to a six.
+
+There used to be three copies of this walk in the codebase (the original `measure_line`, the
+inline loops in `score_position`, and the run walker inside `find_completion_pairs`). They now
+share one implementation, at a measured ~10% cost on the evaluate hot path — the price of
+having the walk logic stated once.
+
+### 6.3 Stage 1 — scoring cells by line potential
+
+`score_position(x, y)` measures what placing a stone on the cell would be worth:
+
+1. virtually place a **Black** stone on the cell; for each of the 4 axes measure the line
+   (capped at 6/6); whenever `length + free >= 6` add `LIVE_WEIGHTS[min(length, 5)]` — this is
+   the **attack** value;
+2. reset, virtually place a **White** stone, repeat — the **defence** value;
+3. return attack + defence.
+
+Scoring both colours is the point: a cell is hot either because it builds *our* line or because
+it spoils *the opponent's*, and the sum ranks both kinds. The weights are the same `LIVE_WEIGHTS`
+the static evaluation uses (section 2) — the generator and the leaf evaluator speak one
+language, so a move that looks good to generate also looks good to evaluate.
+
+On the live-5 board above: a virtual White stone on `(9,8)` completes a six-long run → weight
+10000; a virtual Black stone there builds nothing → 0. Score: **10000**. The same for `(9,14)`.
+Cluster-interior cells touch no collinear run and score single digits. The block cells now rank
+1-2 instead of near-bottom.
+
+Only cells adjacent to at least one stone are scored — a cell with no stone neighbour can at
+best start a lone living single (weight 1); it can never extend or block anything, since every
+six-window through it would have to be built from scratch. Unscored far cells are appended
+unscored as *fillers* so the pool still reaches its fixed size in sparse positions.
+
+### 6.4 Stage 2 — pairing by summed score
+
+`generate_candidate_moves` takes the top `MAX_CANDIDATE_CELLS` (16) scored cells, forms all 120
+pairs, ranks them by `score_a + score_b`, and returns the best `MAX_CANDIDATE_MOVES` (30).
+
+Sum ranking has exactly the property the double-block needs: on the live-5 board the two block
+cells are the two highest-scoring cells (10000 each), so `(9,8)+(9,14)` has the maximum possible
+sum and is generated **first** — ahead of every "one block + decoration" combination.
+
+A residual anchor effect remains — the top cell still appears in most of the 30 pairs, because
+`top + partner` outranks `weaker + weaker`. This is now mostly harmless: the top cell genuinely
+*is* the hottest cell on the board, the one most worth combining with anything, and the pairs
+that matter tactically (top cell + second cell, block + block) rank first regardless.
+
+### 6.5 Stage 3 — injecting two-stone completion pairs
+
+Single-cell scoring has one blind spot: a six that needs **two** new stones. On the live-4
+board (`create_threat_board(4)`, white four at y 9-12), the winning move is the pair
+`(9,13)+(9,14)`. But `(9,14)` on its own is nearly worthless — its virtual run has length 1,
+because the neighbouring `(9,13)` is still empty — so it scores 2 and may not even make the
+top-16 cell pool. No ranking of individually-scored cells reliably produces that pair.
+
+`find_completion_pairs` closes the gap directly. For every top cell whose virtual placement
+would create a run of **exactly 5** for either colour, it calls `measure_line(..., max_free=0)`
+and reads the run-end cells: each empty end cell is precisely the partner that extends the run
+to six, and the pair `(cell, partner)` is inserted **ahead of** the ranked pairs. Runs of 6+
+are skipped — they complete alone and already score 10000 via stage 1.
+
+Injection happens at **every** node, not just the root, because the search needs the pair
+twice: the *attacker* must have it among its candidates to play it (at ply 2, refuting a lazy
+root move with a White six → `MININT`), and the *defender* must have the block among its
+candidates to prevent it (at ply 1). Both are `generate_candidate_moves` calls.
+
+The live-4 defence works out as follows. White's four leaves three six-windows open:
+`{7,8}`, `{8,13}`, `{13,14}` (cells on row 9, y-values). Any Black move that leaves one open is
+refuted at ply 2 by the injected White pair — e.g. after a lazy `(9,8)+(12,11)`, White's node
+finds `(9,13)` as a virtual 5-run cell and injects `(9,13)+(9,14)`, which completes the six
+`y 9-14` → `MININT`. The move that covers all three windows — `(9,8)+(9,13)` — survives, and is
+chosen.
+
+### 6.6 Cost and evidence
+
+Candidate generation runs only at internal nodes — 931 of the 27 931 nodes at depth 3 — and each
+call scores only the cells adjacent to stones (tens in a normal mid-game) with walks capped at
+6+6 steps. The stage-3 scan touches only cells scoring ≥ 10000 (a handful at most) and walks
+4 axes twice per colour. Net effect on the search: the O(B^depth) table in section 5 already
+includes it — depth 3 stays at ~1.3-1.8 s per move.
+
+Three regression tests pin the behaviour (test.py, Search Tests 10-12):
+
+- `test_candidates_include_completion_pairs` — the two-stone win pair `(9,13)+(9,14)` is
+  present in the generated list on the live-4 board;
+- `test_search_blocks_double_threat` — after the engine's reply on the live-5 board, a full
+  six-window scan (`color_can_complete_six`) confirms White can no longer complete a six;
+- `test_search_blocks_two_stone_threat` — the same guarantee on the live-4 board.
+
+## 7. Known limitations
 
 - **Terminal dominance is not mathematically guaranteed**: many simultaneous live-5 sets could in principle sum past `MAXINT`. In practice the search ends the game at the first completed six, so this needs pathological positions to trigger.
 - **Sets are counted independently**: two collinear runs sharing one empty gap (a "broken three" pattern) are valued as two sets, not as the combined threat they really are.
 - **Singles contribute noise** (+1 per stone per axis) — symmetric between players, but a richer pattern table would score by pattern type instead.
+- **The candidate pool has a single-cell horizon**: pairs come from the 16 highest-scoring cells plus the 5-run injections. A double threat whose two key cells each score low individually (e.g. gap-bridging patterns that need two specific stones to connect two runs) can still slip past the generator — injection only covers 5-run extensions, not arbitrary two-stone tactics.

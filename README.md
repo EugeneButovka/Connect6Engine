@@ -51,7 +51,7 @@ Positions use two letters each (column `A`–`S`, row `A`–`S`), e.g. `JJ` for 
 |-------------------|-------------------------------------------------------------------------|
 | `main.py`         | Entry point; creates and runs the engine.                               |
 | `game_engine.py`  | Game loop, command protocol, move handling, game-end announcements.     |
-| `search_engine.py`| Naive min-max search (fixed depth, no pruning) over a fixed-size list of candidate moves (empty cells paired into moves, capped at `MAX_CANDIDATE_MOVES`, ordered by proximity to existing stones), guided by the static evaluation of living stone sets ([EVALUATION.md](EVALUATION.md)). |
+| `search_engine.py`| Naive min-max search (fixed depth, no pruning) guided by the static evaluation of living stone sets ([EVALUATION.md](EVALUATION.md)). Candidates come from cells scored by line potential (attack + defence, `MAX_CANDIDATE_CELLS` top cells paired into `MAX_CANDIDATE_MOVES` moves, plus injected two-stone completion pairs), so wins and forced blocks are always considered. |
 | `tools.py`        | Board utilities: win/draw detection (`check_game_end`), board printing, move I/O. |
 | `defines.py`     | Constants and core data types (`StoneMove`, `StonePosition`).            |
 
