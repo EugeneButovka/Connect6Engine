@@ -51,7 +51,7 @@ Positions use two letters each (column `A`–`S`, row `A`–`S`), e.g. `JJ` for 
 |-------------------|-------------------------------------------------------------------------|
 | `main.py`         | Entry point; creates and runs the engine.                               |
 | `game_engine.py`  | Game loop, command protocol, move handling, game-end announcements.     |
-| `search_engine.py`| Naive candidate move generation (empty cells paired into moves, capped at `MAX_CANDIDATE_MOVES`, ordered by proximity to existing stones). |
+| `search_engine.py`| Naive candidate move generation (empty cells paired into moves, capped at `MAX_CANDIDATE_MOVES`, ordered by proximity to existing stones) and the static evaluation of living stone sets ([EVALUATION.md](EVALUATION.md)). |
 | `tools.py`        | Board utilities: win/draw detection (`check_game_end`), board printing, move I/O. |
 | `defines.py`     | Constants and core data types (`StoneMove`, `StonePosition`).            |
 
@@ -61,4 +61,10 @@ Positions use two letters each (column `A`–`S`, row `A`–`S`), e.g. `JJ` for 
 uv run test.py
 ```
 
-Covers board state, win/draw termination, color helpers and candidate move generation.
+Covers board state, win/draw termination, color helpers, static evaluation and candidate move generation.
+
+## Benchmarks
+
+Open `perf_depth.ipynb` (Jupyter, or PyCharm's built-in notebook support) and run all cells. It measures `alpha_beta_search` execution time per search depth on a fixed mid-game board and plots depth (x) vs average time (y).
+
+See [EVALUATION.md](EVALUATION.md) for a full walkthrough of the evaluation function and living-set counting, with worked examples.

@@ -16,16 +16,9 @@ class SearchEngine():
     def alpha_beta_search(self, depth, alpha, beta, ourColor, bestMove, preMove): # change for min max
 
         #Check game result
-        result = check_game_end(self.m_board, preMove)
-        if result == Defines.WIN:
-            if (ourColor == self.m_chess_type):
-                #Opponent wins.
-                return 0;
-            else:
-                #Self wins.
-                return Defines.MININT + 1;
-        elif result == Defines.DRAW:
-            return 0;
+        score = self.evaluate(preMove)
+        if score == Defines.MAXINT or score == Defines.MININT:
+            return score
 
         alpha = 0
         if(self.check_first_move()):
@@ -84,6 +77,33 @@ class SearchEngine():
                 if len(moves) >= limit:
                     return moves
         return moves
+
+    def evaluate(self, preMove):
+        result = check_game_end(self.m_board, preMove)
+        if result == Defines.WIN:
+            winner = self.m_board[preMove.positions[0].x][preMove.positions[0].y]
+            if winner == Defines.BLACK:
+                return Defines.MAXINT
+            return Defines.MININT
+        if result == Defines.DRAW:
+            return 0
+        return self.count_live_sets(Defines.BLACK) - self.count_live_sets(Defines.WHITE)
+
+    def count_live_sets(self, color):
+        value = 0
+        for x in range(1, Defines.GRID_NUM - 1):
+            for y in range(1, Defines.GRID_NUM - 1):
+                if self.m_board[x][y] != color:
+                    continue
+                position = StonePosition(x, y)
+                for direction in Defines.DIRECTIONS:
+                    if self.m_board[x - direction[0]][y - direction[1]] == color:
+                        continue
+                    position = StonePosition(x, y)
+                    length, free = measure_line(self.m_board, position, direction)
+                    if length + free >= 6:
+                        value += Defines.LIVE_WEIGHTS[min(length, 5)]
+        return value
 
 def flush_output():
     import sys

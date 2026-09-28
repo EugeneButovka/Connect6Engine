@@ -18,6 +18,10 @@ class Defines:
     DRAW=2
     # Max amount of candidate moves generated for the search.
     MAX_CANDIDATE_MOVES=20
+    # Line axes on the board; each vector is walked both ways.
+    DIRECTIONS=[(1, 0), (0, 1), (1, 1), (1, -1)]
+    # Value of a living set of stones, indexed by its length.
+    LIVE_WEIGHTS=[0, 1, 10, 100, 1000, 10000]
 
 class StonePosition:
     def __init__(self,x,y):

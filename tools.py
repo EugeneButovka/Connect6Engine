@@ -30,32 +30,39 @@ def unmake_move(board, move):
     board[move.positions[0].x][move.positions[0].y] = Defines.NOSTONE
     board[move.positions[1].x][move.positions[1].y] = Defines.NOSTONE
 
-def count_stones_in_line(board, position, direction):
+def measure_line(board, position, direction):
     movStone = board[position.x][position.y]
-    count = 0
+    length = 0
+    free = 0
     x = position.x
     y = position.y
     while board[x][y] == movStone:
         x += direction[0]
         y += direction[1]
-        count += 1
+        length += 1
+    while board[x][y] == Defines.NOSTONE:
+        x += direction[0]
+        y += direction[1]
+        free += 1
     x = position.x - direction[0]
     y = position.y - direction[1]
     while board[x][y] == movStone:
         x -= direction[0]
         y -= direction[1]
-        count += 1
-    return count
+        length += 1
+    while board[x][y] == Defines.NOSTONE:
+        x -= direction[0]
+        y -= direction[1]
+        free += 1
+    return length, free
 
 def is_win_by_move(board, preMove):
-    directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
-
-    for direction in directions:
+    for direction in Defines.DIRECTIONS:
         for position in preMove.positions:
             stone = board[position.x][position.y]
             if stone == Defines.BORDER or stone == Defines.NOSTONE:
                 continue
-            if count_stones_in_line(board, position, direction) >= 6:
+            if measure_line(board, position, direction)[0] >= 6:
                 return True
     return False
 

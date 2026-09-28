@@ -1,4 +1,4 @@
-from tools import init_board, is_board_full, is_win_by_move, check_game_end, color_to_name, opponent
+from tools import init_board, is_board_full, is_win_by_move, check_game_end, color_to_name, opponent, measure_line
 from defines import Defines, StoneMove
 from search_engine import SearchEngine
 
@@ -257,6 +257,122 @@ def test_candidates_custom_limit():
 
 
 # ============================================================
+# EVALUATION TESTS
+# ============================================================
+
+def test_evaluate_black_win():
+    board = create_empty_board()
+    for y in range(5, 11):
+        board[10][y] = Defines.BLACK
+    engine = create_search_engine(board)
+    assert engine.evaluate(create_move_at(10, 10)) == Defines.MAXINT
+    print("Eval Test 1 - Black win returns MAXINT: PASS")
+
+
+def test_evaluate_white_win():
+    board = create_empty_board()
+    for y in range(5, 11):
+        board[10][y] = Defines.WHITE
+    engine = create_search_engine(board)
+    assert engine.evaluate(create_move_at(10, 10)) == Defines.MININT
+    print("Eval Test 2 - White win returns MININT: PASS")
+
+
+def test_evaluate_draw():
+    board = create_empty_board()
+    fill_board_no_line(board)
+    engine = create_search_engine(board)
+    assert engine.evaluate(create_move_at(10, 10)) == 0
+    print("Eval Test 3 - Draw returns 0: PASS")
+
+
+def test_evaluate_empty_board():
+    board = create_empty_board()
+    engine = create_search_engine(board)
+    assert engine.evaluate(create_move_at(10, 10)) == 0
+    print("Eval Test 4 - Empty board is balanced: PASS")
+
+
+def test_evaluate_black_advantage():
+    board = create_empty_board()
+    for y in range(3, 7):
+        board[10][y] = Defines.BLACK
+    for y in range(3, 5):
+        board[15][y] = Defines.WHITE
+    engine = create_search_engine(board)
+    score = engine.evaluate(create_move_at(10, 10))
+    assert score > 0
+    assert score > Defines.LIVE_WEIGHTS[3]
+    print("Eval Test 5 - Black advantage is positive: PASS")
+
+
+def test_evaluate_white_advantage():
+    board = create_empty_board()
+    for y in range(3, 7):
+        board[10][y] = Defines.WHITE
+    for y in range(3, 5):
+        board[15][y] = Defines.BLACK
+    engine = create_search_engine(board)
+    score = engine.evaluate(create_move_at(10, 10))
+    assert score < 0
+    assert score < -Defines.LIVE_WEIGHTS[3]
+    print("Eval Test 6 - White advantage is negative: PASS")
+
+
+def test_evaluate_mirrored_board():
+    board = create_empty_board()
+    for y in range(3, 6):
+        board[5][y] = Defines.BLACK
+        board[15][y] = Defines.WHITE
+    engine = create_search_engine(board)
+    assert engine.evaluate(create_move_at(10, 10)) == 0
+    print("Eval Test 7 - Mirrored board is balanced: PASS")
+
+
+def test_dead_set_is_worthless():
+    dead = create_empty_board()
+    for y in range(8, 12):
+        dead[10][y] = Defines.BLACK
+    dead[10][7] = Defines.WHITE
+    dead[10][12] = Defines.WHITE
+    open_board = create_empty_board()
+    for y in range(8, 12):
+        open_board[10][y] = Defines.BLACK
+    d = create_search_engine(dead)
+    o = create_search_engine(open_board)
+    assert o.count_live_sets(Defines.BLACK) - d.count_live_sets(Defines.BLACK) == Defines.LIVE_WEIGHTS[4]
+    print("Eval Test 8 - Dead set contributes nothing: PASS")
+
+
+def test_diagonal_equals_horizontal():
+    horizontal = create_empty_board()
+    for y in range(3, 6):
+        horizontal[10][y] = Defines.BLACK
+    diagonal = create_empty_board()
+    for i in range(3):
+        diagonal[10 + i][4 + i] = Defines.BLACK
+    h = create_search_engine(horizontal)
+    d = create_search_engine(diagonal)
+    assert h.count_live_sets(Defines.BLACK) == d.count_live_sets(Defines.BLACK)
+    assert h.count_live_sets(Defines.BLACK) > Defines.LIVE_WEIGHTS[3]
+    print("Eval Test 9 - All line axes are covered equally: PASS")
+
+
+def test_longer_set_worth_more():
+    three = create_empty_board()
+    for y in range(3, 6):
+        three[10][y] = Defines.BLACK
+    two_pairs = create_empty_board()
+    for y in range(3, 5):
+        two_pairs[10][y] = Defines.BLACK
+        two_pairs[15][y] = Defines.BLACK
+    t = create_search_engine(three)
+    p = create_search_engine(two_pairs)
+    assert t.count_live_sets(Defines.BLACK) > p.count_live_sets(Defines.BLACK)
+    print("Eval Test 10 - Longer sets outweigh more shorter ones: PASS")
+
+
+# ============================================================
 # RUN ALL TESTS
 # ============================================================
 
@@ -284,6 +400,18 @@ if __name__ == "__main__":
     print("\n========== COLOR TESTS ==========\n")
     test_color_names()
     test_opponent()
+
+    print("\n========== EVALUATION TESTS ==========\n")
+    test_evaluate_black_win()
+    test_evaluate_white_win()
+    test_evaluate_draw()
+    test_evaluate_empty_board()
+    test_evaluate_black_advantage()
+    test_evaluate_white_advantage()
+    test_evaluate_mirrored_board()
+    test_dead_set_is_worthless()
+    test_diagonal_equals_horizontal()
+    test_longer_set_worth_more()
 
     print("\n========== MOVE GENERATION TESTS ==========\n")
     test_candidate_limit()
