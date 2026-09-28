@@ -183,7 +183,7 @@ def test_opponent():
 
 def create_search_engine(board, color=Defines.WHITE):
     engine = SearchEngine()
-    engine.before_search(board, color, Defines.ALPHABETA_DEPTH)
+    engine.before_search(board, color, Defines.SEARCH_DEPTH)
     return engine
 
 
@@ -398,7 +398,7 @@ def test_search_finds_winning_move():
     board = create_winnable_board()
     engine = create_search_engine(board, Defines.BLACK)
     best = StoneMove()
-    score = engine.alpha_beta_search(2, Defines.MININT, Defines.MAXINT, Defines.BLACK, best, create_move_at(10, 7))
+    score = engine.min_max_search(2, Defines.BLACK, best, create_move_at(10, 7))
     assert score == Defines.MAXINT
     assert (10, 8) in placed_cells(best)
     print("Search Test 7 - Min-max finds the winning move: PASS")
@@ -408,7 +408,7 @@ def test_search_blocks_threat():
     board = create_winnable_board()
     engine = create_search_engine(board, Defines.WHITE)
     best = StoneMove()
-    score = engine.alpha_beta_search(2, Defines.MININT, Defines.MAXINT, Defines.WHITE, best, create_move_at(10, 7))
+    score = engine.min_max_search(2, Defines.WHITE, best, create_move_at(10, 7))
     assert score < Defines.MAXINT
     assert (10, 8) in placed_cells(best)
     print("Search Test 8 - Min-max blocks the opponent's winning move: PASS")
@@ -421,7 +421,7 @@ def test_search_depth_grows_nodes():
     for depth in (1, 2, 3):
         engine = create_search_engine(board, Defines.WHITE)
         best = StoneMove()
-        engine.alpha_beta_search(depth, Defines.MININT, Defines.MAXINT, Defines.WHITE, best, create_move_at(10, 10))
+        engine.min_max_search(depth, Defines.WHITE, best, create_move_at(10, 10))
         counts.append(engine.m_total_nodes)
     assert counts[0] < counts[1] < counts[2]
     print("Search Test 9 - Deeper searches explore more nodes: PASS")
@@ -471,7 +471,7 @@ def test_search_blocks_double_threat():
     board = create_threat_board(5)
     engine = create_search_engine(board, Defines.BLACK)
     best = StoneMove()
-    engine.alpha_beta_search(2, Defines.MININT, Defines.MAXINT, Defines.BLACK, best, create_move_at(9, 13))
+    engine.min_max_search(2, Defines.BLACK, best, create_move_at(9, 13))
     make_move(board, best, Defines.BLACK)
     assert not color_can_complete_six(board, Defines.WHITE)
     print("Search Test 11 - Min-max blocks a live five on both ends: PASS")
@@ -481,7 +481,7 @@ def test_search_blocks_two_stone_threat():
     board = create_threat_board(4)
     engine = create_search_engine(board, Defines.BLACK)
     best = StoneMove()
-    engine.alpha_beta_search(2, Defines.MININT, Defines.MAXINT, Defines.BLACK, best, create_move_at(9, 12))
+    engine.min_max_search(2, Defines.BLACK, best, create_move_at(9, 12))
     make_move(board, best, Defines.BLACK)
     assert not color_can_complete_six(board, Defines.WHITE)
     print("Search Test 12 - Min-max blocks a live four: PASS")

@@ -21,7 +21,7 @@ class Defines:
     # Max amount of single cells the candidate pair generation draws from.
     MAX_CANDIDATE_CELLS = 16
     # Default depth of the min-max exploration tree.
-    ALPHABETA_DEPTH = 3
+    SEARCH_DEPTH = 3
     # Line axes on the board; each vector is walked both ways.
     DIRECTIONS = [(1, 0), (0, 1), (1, 1), (1, -1)]
     # Value of a living set of stones, indexed by its length.

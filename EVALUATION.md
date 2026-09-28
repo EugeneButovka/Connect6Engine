@@ -1,6 +1,6 @@
 # Static Evaluation
 
-`SearchEngine.evaluate(preMove)` turns any board position into a single number that the alpha-beta search uses to compare branches. It runs in the **fixed first-player frame**: the score is always written from Black's point of view — positive means Black (the first player) is better, negative means White is better. The search tree never flips the evaluation when the engine plays White; it simply alternates max/min by turn.
+`SearchEngine.evaluate(preMove)` turns any board position into a single number that the min-max search uses to compare branches. It runs in the **fixed first-player frame**: the score is always written from Black's point of view — positive means Black (the first player) is better, negative means White is better. The search tree never flips the evaluation when the engine plays White; it simply alternates max/min by turn.
 
 ```
 score = evaluate(preMove)
@@ -168,10 +168,10 @@ One evaluation sweeps 361 cells x 4 axes; each `measure_line` walk visits at mos
 
 ## 5. The evaluator inside the naive min-max search
 
-The evaluation function is consumed by the naive search tree method (`SearchEngine.alpha_beta_search` /
+The evaluation function is consumed by the naive search tree method (`SearchEngine.min_max_search` /
 `SearchEngine.min_max`, search_engine.py) — plain min-max with **no pruning**, per the spec:
 
-1. **Root** — `alpha_beta_search` handles the empty-board center opening, then explores every
+1. **Root** — `min_max_search` handles the empty-board center opening, then explores every
    proposed candidate (`generate_candidate_moves(MAX_CANDIDATE_MOVES)`) and picks the move with the
    best `min_max` score: Black-to-move nodes **maximize**, White-to-move nodes **minimize** —
    the same fixed first-player frame as the evaluation itself, so no sign flipping anywhere.
@@ -184,6 +184,39 @@ The evaluation function is consumed by the naive search tree method (`SearchEngi
 4. **Traversal** — children are explored with `make_move`/`unmake_move` on the engine's private
    board copy, alternating colors every ply; `preMove` is always the move that led to the node,
    so terminal detection only ever needs to look at the last two stones placed.
+
+The call graph of one search:
+
+```
+min_max_search(depth, bestMove, preMove)         root: ourColor to move
+    |
+    |-- is_first_move?  -- yes --> center opening (10,10), return
+    |
+    |-- generate_candidate_moves(30)                   section 6
+    |
+    +-- for each candidate move:
+          make_move() -> min_max(depth-1, opponent, move) -> unmake_move()
+                             |
+                             |-- evaluate(preMove)
+                             |      |-- check_game_end -> is_win_by_move
+                             |      |                     |
+                             |      |                     v
+                             |      |               measure_line     tools.py
+                             |      |
+                             |      +-- count_live_sets(BLACK) - (WHITE)
+                             |                                  |
+                             |                                  v
+                             |                            measure_line
+                             |
+                             |-- terminal score or depth == 0 -> return score
+                             |
+                             +-- generate_candidate_moves(30)  -> make_move
+                                    -> min_max(depth-2, ...)  -> unmake  (recurse)
+```
+
+Scores bubble back up unchanged: a completed six anywhere in the subtree returns `±MAXINT`
+immediately, a full-board node returns the draw score `0`, and every other node returns the
+best (max for Black, min for White) of its children.
 
 ### Candidate selection
 
@@ -199,12 +232,12 @@ Measured on the notebook's benchmark position (mid-game board, CPython 3.14):
 | 1     | 31      | ~2 ms         |
 | 2     | 931     | ~57 ms        |
 | 3     | 27 931  | ~1.8 s        |
-| 4     | ~835 k  | ~1 min (do not use) |
+| 4     | 829 891 | ~56 s (do not use) |
 | 5     | ~25 M   | ~30 min (do not use) |
 
 Practical consequence: with plain min-max the playable range is `depth 2`-`3`; the engine's default
-depth of 3 sits at the top of it. The `perf_depth.ipynb` notebook documents this scaling: measurements
-of the real search at depths 1-3 with the theoretical `O(B^depth)` model overlaid.
+depth of 3 sits at the top of it. The `perf_depth.ipynb` notebook documents this scaling: single-run
+measurements of the real search at depths 1-4 with the theoretical `O(B^depth)` model overlaid.
 
 ## 6. Candidate selection
 
@@ -213,6 +246,47 @@ contents of that list decide everything: min-max can only choose among moves it 
 list that omits the winning move makes the engine miss wins; a list that omits the forced block
 makes it ignore obvious losses — "not finding an obvious lose situation". The generator is naive
 in mechanism (fixed size, no game-tree reasoning), but tactically literate in what it ranks.
+
+The whole pipeline in one picture (`generate_candidate_moves`, one call per internal node):
+
+```
+                         board position (m_board)
+                                  |
+         +------------------------+------------------------+
+         |                                                 |
+   empty cell with a stone                     empty cell with no stone
+   in its 8-neighbourhood                      in its 8-neighbourhood
+         |                                                 |
+         v                                                 v
+ +------------------+                              fillers (score 0)
+ | score_position   |   attack + defence
+ | (stage 1, 6.3)   |   per cell, 4 axes x 2 colours
+ +------------------+
+         |
+   scored cells, sorted by score, descending
+         |
+         v
+   top MAX_CANDIDATE_CELLS = 16 cells
+         |
+         +--------------+------------------------------+
+         |                                             |
+         v                                             v
+ +------------------+                    +---------------------------+
+ | all C(16,2)=120  |                    | find_completion_pairs     |
+ | ranked by sum    |                    | (stage 3, 6.5):           |
+ | of cell scores   |                    | virtual 5-run cell + its  |
+ | (stage 2, 6.4)   |                    | run-end partner cell      |
+ +------------------+                    +---------------------------+
+         |                                             |
+         +---------> injected pairs come first <------+
+                           |
+                           v
+              top MAX_CANDIDATE_MOVES = 30 moves
+                           |
+                           v
+        min_max_search / min_max: one candidate per child,
+        make_move -> recurse -> unmake_move (section 5)
+```
 
 ### 6.1 Why "most stone neighbours" fails
 
@@ -287,8 +361,9 @@ unscored as *fillers* so the pool still reaches its fixed size in sparse positio
 
 ### 6.4 Stage 2 — pairing by summed score
 
-`generate_candidate_moves` takes the top `MAX_CANDIDATE_CELLS` (16) scored cells, forms all 120
-pairs, ranks them by `score_a + score_b`, and returns the best `MAX_CANDIDATE_MOVES` (30).
+`generate_candidate_moves` takes the top `MAX_CANDIDATE_CELLS` (16) scored cells, forms every
+possible pair — C(16,2) = 120 on a normal board, fewer when the board is nearly full — ranks
+them by `score_a + score_b`, and returns the best `MAX_CANDIDATE_MOVES` (30).
 
 Sum ranking has exactly the property the double-block needs: on the live-5 board the two block
 cells are the two highest-scoring cells (10000 each), so `(9,8)+(9,14)` has the maximum possible

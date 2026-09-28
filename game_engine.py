@@ -12,7 +12,7 @@ class GameEngine:
                 self.m_engine_name = name
             else:
                 print(f"Too long Engine Name: {name}, should be less than: {Defines.MSG_LENGTH}")
-        self.m_alphabeta_depth = Defines.ALPHABETA_DEPTH
+        self.m_search_depth = Defines.SEARCH_DEPTH
         self.m_chess_type = None
         self.m_vcf = False
         self.m_board = [[0] * Defines.GRID_NUM for _ in range(Defines.GRID_NUM)]
@@ -36,7 +36,7 @@ class GameEngine:
             "              and the engine will search the move for the next step.\n"
             " new black   - start a new game and set the engine to black player.\n"
             " new white   - start a new game and set it to white.\n"
-            " depth d     - set the alpha beta search depth, default is 3.\n"
+            " depth d     - set the min-max search depth, default is 3.\n"
             " vcf         - set vcf search.\n"
             " unvcf       - set none vcf search.\n"
             " help        - print this help.\n")
@@ -118,8 +118,8 @@ class GameEngine:
             elif msg.startswith("depth"):
                 d = int(msg[6:])
                 if 0 < d < 10:
-                    self.m_alphabeta_depth = d
-                print(f"Set the search depth to {self.m_alphabeta_depth}.\n")
+                    self.m_search_depth = d
+                print(f"Set the search depth to {self.m_search_depth}.\n")
             elif msg == "help":
                 self.on_help()
         return 0
@@ -130,11 +130,11 @@ class GameEngine:
         end = 0
 
         start = time.perf_counter()
-        self.m_search_engine.before_search(self.m_board, self.m_chess_type, self.m_alphabeta_depth)
-        score = self.m_search_engine.alpha_beta_search(self.m_alphabeta_depth, Defines.MININT, Defines.MAXINT, ourColor, bestMove, bestMove)
+        self.m_search_engine.before_search(self.m_board, self.m_chess_type, self.m_search_depth)
+        score = self.m_search_engine.min_max_search(self.m_search_depth, ourColor, bestMove, bestMove)
         end = time.perf_counter()
 
-        print(f"AB Time:\t{end - start:.3f}")
+        print(f"Search Time:\t{end - start:.3f}")
         print(f"Node:\t{self.m_search_engine.m_total_nodes}\n")
         print(f"Score:\t{score:.3f}")
         return True

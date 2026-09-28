@@ -5,19 +5,19 @@ class SearchEngine():
     def __init__(self):
         self.m_board = None
         self.m_chess_type = None
-        self.m_alphabeta_depth = None
+        self.m_depth = None
         self.m_total_nodes = 0
 
-    def before_search(self, board, color, alphabeta_depth):
+    def before_search(self, board, color, depth):
         self.m_board = [row[:] for row in board]
         self.m_chess_type = color
-        self.m_alphabeta_depth = alphabeta_depth
+        self.m_depth = depth
         self.m_total_nodes = 0
 
-    def alpha_beta_search(self, depth, alpha, beta, ourColor, bestMove, preMove):
+    def min_max_search(self, depth, ourColor, bestMove, preMove):
 
         self.m_total_nodes += 1
-        if self.check_first_move():
+        if self.is_first_move():
             bestMove.positions[0].x = 10
             bestMove.positions[0].y = 10
             bestMove.positions[1].x = 10
@@ -76,14 +76,14 @@ class SearchEngine():
                     best_score = child
         return best_score
 
-    def check_first_move(self):
+    def is_first_move(self):
         for i in range(1, len(self.m_board) - 1):
             for j in range(1, len(self.m_board[i]) - 1):
                 if (self.m_board[i][j] != Defines.NOSTONE):
                     return False
         return True
 
-    def get_empty_positions(self):
+    def get_scored_cells(self):
         scored = []
         fillers = []
         for i in range(1, len(self.m_board) - 1):
@@ -125,11 +125,11 @@ class SearchEngine():
         return total
 
     def generate_candidate_moves(self, limit):
-        cells = self.get_empty_positions()[:Defines.MAX_CANDIDATE_CELLS]
+        cells = self.get_scored_cells()[:Defines.MAX_CANDIDATE_CELLS]
         moves = []
         seen = set()
         for x1, y1, x2, y2 in self.find_completion_pairs(cells):
-            self.add_candidate(moves, seen, limit, x1, y1, x2, y2)
+            self.try_add_candidate(moves, seen, limit, x1, y1, x2, y2)
         pairs = []
         for i in range(len(cells)):
             for j in range(i + 1, len(cells)):
@@ -138,10 +138,10 @@ class SearchEngine():
         for _, i, j in pairs:
             if len(moves) >= limit:
                 return moves
-            self.add_candidate(moves, seen, limit, cells[i][1], cells[i][2], cells[j][1], cells[j][2])
+            self.try_add_candidate(moves, seen, limit, cells[i][1], cells[i][2], cells[j][1], cells[j][2])
         return moves
 
-    def add_candidate(self, moves, seen, limit, x1, y1, x2, y2):
+    def try_add_candidate(self, moves, seen, limit, x1, y1, x2, y2):
         if len(moves) >= limit:
             return
         key = tuple(sorted(((x1, y1), (x2, y2))))
