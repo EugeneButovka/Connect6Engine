@@ -174,13 +174,17 @@ This is what makes move choice sensible without any hand-written rules: extendin
 
 One evaluation sweeps 361 cells x 4 axes; each `measure_line` walk visits at most ~20 cells (run + free before hitting border/opponent). A handful of thousands of cell visits — microseconds. The `benchmarks/perf_depth.ipynb` notebook measures the real numbers and plots them.
 
-## 5. The evaluator inside the naive min-max search
+## 5. The evaluator inside the min-max search
 
-The evaluation function is consumed by the naive search tree method (`search.search` /
-`search._min_max`, connect6/search.py) — plain min-max with **no pruning**, per the spec:
+The evaluation function is consumed by the search tree methods (`search.search_min_max` /
+`search.search_alpha_beta`, connect6/search.py) — both share one unified `_alpha_beta` loop.
+The naive variant explores the full `O(B^depth)` tree with **no pruning**, exactly as the
+spec's baseline step requires; the alpha-beta variant is the spec's next step, built on top
+of the same loop. The two public entries differ only in a `prune` flag:
 
-1. **Entry** — `search` copies the board (the search mutates and restores its private copy),
-   handles the empty-board center opening, then runs one unified `_min_max` loop from the root.
+1. **Entry** — `_search` copies the board (the search mutates and restores its private copy),
+   handles the empty-board center opening, then runs one unified `_alpha_beta` loop from the root
+   with bounds pinned at `±MAXINT` and the `prune` flag choosing the variant.
    Black-to-move nodes **maximize**, White-to-move nodes **minimize** — the same fixed
    first-player frame as the evaluation itself, so no sign flipping anywhere.
 2. **Terminal nodes** — every node first runs `evaluate(pre_move)`; a game-over score
@@ -213,15 +217,15 @@ GameEngine.run()  -- stdin/stdout command loop --         connect6/game_engine.p
   |        check_game_end()  -- Human wins / Draw -> announce, exit
   |                       |
   |                       v
-  |        _search_and_play(color, pre_move)
-  |                       |
-  |        search(board, color, depth, pre_move, stats)   connect6/search.py
-  |                       |        (private board copy)
-  |                       v
-  |        is_board_empty? -- yes --> center opening (10,10)
-  |                       |
-  |                       v
-  |        _min_max(depth, board, color, pre_move, stats)
+|        _search_and_play(color, pre_move)
+   |                       |
+   |        search_alpha_beta(board, color, depth, pre_move, stats)   connect6/search.py
+   |                       |        (private board copy, prune=True)
+   |                       v
+   |        is_board_empty? -- yes --> center opening (10,10)
+   |                       |
+   |                       v
+   |        _alpha_beta(depth, board, color, pre_move, stats, alpha, beta, prune)
   |                       |
   |        generate_candidate_moves(30)   <-- pipeline: section 6
   |                       |
@@ -229,7 +233,7 @@ GameEngine.run()  -- stdin/stdout command loop --         connect6/game_engine.p
   |       |     make_move()                       |
   |       |        |                              |
   |       |        v                              |
-  |       |    _min_max(depth-1, opponent, move)  |  recursion
+  |       |  _alpha_beta(depth-1, opponent, move) |  recursion
   |       |        |                              |
   |       |        +--> evaluate(pre_move)         |
   |       |        |    |-- check_game_end        |
@@ -259,16 +263,16 @@ next stdin command
 Zooming into the search itself, the call graph of one search:
 
 ```
-search(board, color, depth, pre_move, stats)          entry: private board copy
+search_min_max(board, ...) / search_alpha_beta(board, ...)  entries: differ only in prune flag
     |
-    |-- is_board_empty?  -- yes --> center opening (10,10), return
+    +-- _search(...)  -- copy_board, center opening, dispatch to _alpha_beta
     |
-    +-- _min_max(depth, board, color, pre_move, stats)     root: color to move
+    +-- _alpha_beta(depth, board, color, pre_move, stats, alpha, beta, prune)  root
     |
     |-- generate_candidate_moves(30)                   section 6
     |
     +-- for each candidate move:
-          make_move() -> _min_max(depth-1, opponent, move) -> unmake_move()
+          make_move() -> _alpha_beta(depth-1, opponent, move) -> unmake_move()
                              |
                              |-- evaluate(pre_move)
                              |      |-- check_game_end -> _is_win_by_move
@@ -284,7 +288,7 @@ search(board, color, depth, pre_move, stats)          entry: private board copy
                              |-- terminal score or depth == 0 -> return score
                              |
                              +-- generate_candidate_moves(30)  -> make_move
-                                    -> _min_max(depth-2, ...)  -> unmake  (recurse)
+                                    -> _alpha_beta(depth-2, ...)  -> unmake  (recurse)
 ```
 
 Scores bubble back up unchanged: a completed six anywhere in the subtree returns `±MAXINT`
@@ -297,20 +301,64 @@ How `generate_candidate_moves` builds the fixed-size list — cell scoring by li
 pairing by summed score, and injected two-stone completion pairs — is documented in
 [section 6](#6-candidate-selection).
 
-Because there is no pruning, every node expands all 30 candidates and the tree grows as `30^depth`.
-Measured on the notebook's benchmark position (mid-game board, CPython 3.14):
+Because the naive variant has no pruning, every node expands all 30 candidates and its tree
+grows as `30^depth`. Measured on the notebook's benchmark position (mid-game board, CPython 3.14):
 
-| depth | nodes   | min time      |
-|-------|---------|---------------|
-| 1     | 31      | ~2 ms         |
-| 2     | 931     | ~57 ms        |
-| 3     | 27 931  | ~1.8 s        |
-| 4     | 829 891 | ~56 s (do not use) |
+| depth | nodes   | time              |
+|-------|---------|-------------------|
+| 1     | 31      | ~2 ms             |
+| 2     | 931     | ~57 ms            |
+| 3     | 27 931  | ~1.9 s            |
+| 4     | 829 891 | ~58 s (do not use) |
 | 5     | ~25 M   | ~30 min (do not use) |
 
-Practical consequence: with plain min-max the playable range is `depth 2`-`3`; the engine's default
-depth of 3 sits at the top of it. The `benchmarks/perf_depth.ipynb` notebook documents this scaling: single-run
-measurements of the real search at depths 1-4 with the theoretical `O(B^depth)` model overlaid.
+### Alpha-beta pruning
+
+Alpha-beta is min-max plus a window: each node carries `[alpha, beta]` — the best score
+already guaranteed to Black along the path here (`alpha`) and to White (`beta`). After each
+child returns, a maximizing node raises `alpha`; the moment its best score reaches `beta`,
+no remaining candidate can change the minimizing parent's decision, so the loop stops early.
+The minimizing side is symmetric. Root score and root move are provably identical to plain
+min-max — only the node count changes.
+
+There is one core, not two implementations: `_alpha_beta` takes `alpha`, `beta` and a `prune`
+flag. `search_min_max()` runs it with pruning off — bounds stay pinned at `±MAXINT`, the guarded
+cutoff lines are skipped, and the behavior is exactly the naive baseline. `search_alpha_beta()`
+runs it with pruning on. The engine uses `search_alpha_beta`; `search_min_max()` stays for the
+comparison and the benchmark notebook.
+
+The pruning is unusually effective because the candidate pipeline already orders moves the
+way alpha-beta wants: completion pairs — the forcing moves — are examined first, then pairs
+by summed potential. The earlier the best move is tried, the tighter the bounds, the more
+cutoffs. Measured on the same benchmark position (scores agree with the naive search at
+depths 3 and 4):
+
+| depth | naive nodes | pruned nodes | reduction | naive time | pruned time |
+|-------|-------------|--------------|-----------|------------|-------------|
+| 3     | 27 931      | 1 857        | 15x       | ~1.9 s     | ~0.16 s     |
+| 4     | 829 891     | 20 035       | 41x       | ~58 s      | ~2.3 s      |
+| 5     | ~25 M       | 84 039       | ~300x     | ~30 min    | ~8.6 s      |
+
+Pruned node counts grow ~5-10x per depth instead of ~30x — converging on the theoretical
+`O(B^(d/2))` with an effective branching factor of `sqrt(30) ~ 5.5`. Practical consequence:
+`depth 4`-`5` are now playable reply times (the `depth d` command accepts them unchanged).
+
+That also narrows the horizon gap observed in the AI-vs-AI GUI sessions, where a one-move
+fork (two 4-runs created by a single two-stone move) was invisible to depth 3: the winning
+completion lands one ply past its horizon, so the static leaf cannot tell "lost two plies
+later" from "fine" — depth 3 returned +123 for a position that was already lost. At depth 4
+the whole sequence — fork, forced block, completion — fits inside the window: every line
+that permits the forced win now evaluates at or near `MININT` (verified on the logged
+positions: they score -20000 and -10001 at depth 4, where depth 3 saw -915 and +123).
+Given a fork that is still preventable, depth 4 takes the prevention line, because any line
+blocking the win scores strictly higher; in both logged sessions the damage was done before
+the fork, and depth 4 simply reports the truth sooner.
+
+Practical consequence for the naive variant alone: the playable range is `depth 2`-`3`; the
+default depth of 3 sits at the top of it. The `benchmarks/perf_depth.ipynb` notebook documents
+both variants side by side: single-run measurements (naive depths 1-4, alpha-beta depths 1-5)
+on the benchmark position, score equality asserted, with the theoretical `O(B^depth)` model
+and the ideal `O(B^(depth/2))` guide overlaid.
 
 ## 6. Candidate selection
 
@@ -362,7 +410,7 @@ The whole pipeline in one picture (`generate_candidate_moves`, one call per inte
                top MAX_CANDIDATE_MOVES = 30 moves
                             |
                             v
-         search / _min_max: one candidate per child,
+         search / _alpha_beta: one candidate per child,
          make_move -> recurse -> unmake_move (section 5)
 ```
 
@@ -488,8 +536,8 @@ chosen.
 Candidate generation runs only at internal nodes — 931 of the 27 931 nodes at depth 3 — and each
 call scores only the cells adjacent to stones (tens in a normal mid-game) with walks capped at
 6+6 steps. Stage 3 re-walks only cells scoring ≥ `SetWeight.LIVE_FIVE` (a handful per node at
-most), one capped walk per axis per colour. Net effect on the search: the O(B^depth) table in
-section 5 already includes it — depth 3 stays at ~1.3-1.8 s per move.
+most), one capped walk per axis per colour. Net effect on the search: the cost tables in
+section 5 already include it — naive depth 3 stays at ~1.3-1.9 s, pruned at ~0.16 s per move.
 
 Three regression tests pin the behaviour (tests/test.py, Search Tests 10-12):
 

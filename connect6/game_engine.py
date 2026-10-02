@@ -16,7 +16,7 @@ from .defines import (
     SearchStats,
 )
 from .protocol import color_to_name, log_command, log_error, move2msg, msg2move, print_board
-from .search import search
+from .search import search_alpha_beta
 
 
 def _flush_output() -> None:
@@ -95,7 +95,7 @@ class GameEngine:
         color = self._require_color()
         stats = SearchStats()
         start = time.perf_counter()
-        result = search(self.board, color, self.search_depth, pre_move, stats)
+        result = search_alpha_beta(self.board, color, self.search_depth, pre_move, stats)
         end = time.perf_counter()
 
         print(f"Search Time:\t{end - start:.3f}")

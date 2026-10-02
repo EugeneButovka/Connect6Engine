@@ -14,15 +14,32 @@ from .candidates import generate_candidate_moves
 from .evaluation import evaluate
 
 
-def search(board: Board, color: Color, depth: int, pre_move: Move, stats: SearchStats) -> SearchResult:
+def search_min_max(board: Board, color: Color, depth: int, pre_move: Move, stats: SearchStats) -> SearchResult:
+    return _search(board, color, depth, pre_move, stats, prune=False)
+
+
+def search_alpha_beta(board: Board, color: Color, depth: int, pre_move: Move, stats: SearchStats) -> SearchResult:
+    return _search(board, color, depth, pre_move, stats, prune=True)
+
+
+def _search(board: Board, color: Color, depth: int, pre_move: Move, stats: SearchStats, prune: bool) -> SearchResult:
     working_board = copy_board(board)
     if is_board_empty(working_board):
         center = Move((Position(10, 10), Position(10, 10)))
         return SearchResult(center, 0)
-    return _min_max(depth, working_board, color, pre_move, stats)
+    return _alpha_beta(depth, working_board, color, pre_move, stats, MININT, MAXINT, prune)
 
 
-def _min_max(depth: int, board: Board, color: Color, pre_move: Move, stats: SearchStats) -> SearchResult:
+def _alpha_beta(
+    depth: int,
+    board: Board,
+    color: Color,
+    pre_move: Move,
+    stats: SearchStats,
+    alpha: int,
+    beta: int,
+    prune: bool,
+) -> SearchResult:
     stats.node_count += 1
     score = evaluate(board, pre_move)
     if score == MAXINT or score == MININT:
@@ -39,14 +56,24 @@ def _min_max(depth: int, board: Board, color: Color, pre_move: Move, stats: Sear
     best_move = candidates[0]
     for candidate in candidates:
         make_move(board, candidate, color)
-        child = _min_max(depth - 1, board, opponent(color), candidate, stats)
+        child = _alpha_beta(depth - 1, board, opponent(color), candidate, stats, alpha, beta, prune)
         unmake_move(board, candidate)
         if maximizing:
             if child.score > best_score:
                 best_score = child.score
                 best_move = candidate
+            if prune:
+                if best_score >= beta:
+                    return SearchResult(best_move, best_score)
+                if best_score > alpha:
+                    alpha = best_score
         else:
             if child.score < best_score:
                 best_score = child.score
                 best_move = candidate
+            if prune:
+                if best_score <= alpha:
+                    return SearchResult(best_move, best_score)
+                if best_score < beta:
+                    beta = best_score
     return SearchResult(best_move, best_score)

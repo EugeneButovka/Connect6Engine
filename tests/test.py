@@ -10,7 +10,7 @@ from connect6.game_engine import GameEngine
 from connect6.protocol import color_to_name, move2msg, msg2move
 from connect6.evaluation import evaluate, _score_living_sets
 from connect6.candidates import generate_candidate_moves
-from connect6.search import search
+from connect6.search import search_alpha_beta, search_min_max
 from connect6.defines import (
     ENGINE_NAME,
     GRID_NUM,
@@ -392,7 +392,7 @@ def placed_cells(move):
 
 def test_search_finds_winning_move():
     board = create_winnable_board()
-    result = search(board, Color.BLACK, 2, create_move_at(10, 7), SearchStats())
+    result = search_min_max(board, Color.BLACK, 2, create_move_at(10, 7), SearchStats())
     assert result.score == MAXINT
     assert (10, 8) in placed_cells(result.move)
     print("Search Test 7 - Min-max finds the winning move: PASS")
@@ -400,7 +400,7 @@ def test_search_finds_winning_move():
 
 def test_search_blocks_threat():
     board = create_winnable_board()
-    result = search(board, Color.WHITE, 2, create_move_at(10, 7), SearchStats())
+    result = search_min_max(board, Color.WHITE, 2, create_move_at(10, 7), SearchStats())
     assert result.score < MAXINT
     assert (10, 8) in placed_cells(result.move)
     print("Search Test 8 - Min-max blocks the opponent's winning move: PASS")
@@ -412,7 +412,7 @@ def test_search_depth_grows_nodes():
     counts = []
     for depth in (1, 2, 3):
         stats = SearchStats()
-        search(board, Color.WHITE, depth, create_move_at(10, 10), stats)
+        search_min_max(board, Color.WHITE, depth, create_move_at(10, 10), stats)
         counts.append(stats.node_count)
     assert counts[0] < counts[1] < counts[2]
     print("Search Test 9 - Deeper searches explore more nodes: PASS")
@@ -459,7 +459,7 @@ def test_candidates_include_completion_pairs():
 
 def test_search_blocks_double_threat():
     board = create_threat_board(5)
-    result = search(board, Color.BLACK, 2, create_move_at(9, 13), SearchStats())
+    result = search_min_max(board, Color.BLACK, 2, create_move_at(9, 13), SearchStats())
     make_move(board, result.move, Color.BLACK)
     assert not color_can_complete_six(board, Color.WHITE)
     print("Search Test 11 - Min-max blocks a live five on both ends: PASS")
@@ -467,7 +467,7 @@ def test_search_blocks_double_threat():
 
 def test_search_blocks_two_stone_threat():
     board = create_threat_board(4)
-    result = search(board, Color.BLACK, 2, create_move_at(9, 12), SearchStats())
+    result = search_min_max(board, Color.BLACK, 2, create_move_at(9, 12), SearchStats())
     make_move(board, result.move, Color.BLACK)
     assert not color_can_complete_six(board, Color.WHITE)
     print("Search Test 12 - Min-max blocks a live four: PASS")
@@ -478,9 +478,41 @@ def test_search_and_candidates_do_not_mutate_board():
     snapshot = copy_board(board)
     generate_candidate_moves(board, MAX_CANDIDATE_MOVES)
     assert board == snapshot
-    search(board, Color.BLACK, 2, create_move_at(9, 13), SearchStats())
+    search_min_max(board, Color.BLACK, 2, create_move_at(9, 13), SearchStats())
     assert board == snapshot
     print("Search Test 13 - Search and candidates leave the input board untouched: PASS")
+
+
+def test_alpha_beta_finds_winning_move():
+    board = create_winnable_board()
+    result = search_alpha_beta(board, Color.BLACK, 2, create_move_at(10, 7), SearchStats())
+    assert result.score == MAXINT
+    assert (10, 8) in placed_cells(result.move)
+    print("Search Test 14 - Alpha-beta finds the winning move: PASS")
+
+
+def test_alpha_beta_matches_min_max():
+    for threat, pre in ((4, (9, 12)), (5, (9, 13))):
+        board = create_threat_board(threat)
+        pre_move = create_move_at(*pre)
+        naive = search_min_max(board, Color.BLACK, 2, pre_move, SearchStats())
+        pruned = search_alpha_beta(board, Color.BLACK, 2, pre_move, SearchStats())
+        assert pruned.score == naive.score
+        make_move(board, pruned.move, Color.BLACK)
+        assert not color_can_complete_six(board, Color.WHITE)
+    print("Search Test 15 - Alpha-beta matches min-max on score and forced blocks: PASS")
+
+
+def test_alpha_beta_visits_fewer_nodes():
+    board = create_empty_board()
+    board[10][10] = Color.BLACK
+    pre_move = create_move_at(10, 10)
+    naive_stats = SearchStats()
+    pruned_stats = SearchStats()
+    search_min_max(board, Color.WHITE, 3, pre_move, naive_stats)
+    search_alpha_beta(board, Color.WHITE, 3, pre_move, pruned_stats)
+    assert pruned_stats.node_count < naive_stats.node_count
+    print("Search Test 16 - Alpha-beta visits fewer nodes: PASS")
 
 
 # ============================================================
@@ -744,6 +776,9 @@ if __name__ == "__main__":
     test_search_blocks_double_threat()
     test_search_blocks_two_stone_threat()
     test_search_and_candidates_do_not_mutate_board()
+    test_alpha_beta_finds_winning_move()
+    test_alpha_beta_matches_min_max()
+    test_alpha_beta_visits_fewer_nodes()
 
     print("\n========== MOVE GENERATION TESTS ==========\n")
     test_candidate_limit()
