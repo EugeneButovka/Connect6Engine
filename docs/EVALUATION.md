@@ -147,7 +147,7 @@ This is what makes move choice sensible without any hand-written rules: extendin
 
 **The index is clamped** (`min(length, 5)`): a 6-run means the game is over and the terminal branch fires first — the clamp is only crash-proofing for boards constructed by hand or by tests.
 
-**Tuning.** The base (10) is an engineering choice, not a law: base 2 would make sets more comparable (a live-4 ≈ eight live-2s), base 100 would make threats nearly absolute. The constant lives in `connect6/defines.py` precisely so it can be retuned and the effects measured with `benchmarks/perf_depth.ipynb`.
+**Tuning.** The base (10) is an engineering choice, not a law: base 2 would make sets more comparable (a live-4 ≈ eight live-2s), base 100 would make threats nearly absolute. The constant lives in `connect6/defines.py` precisely so it can be retuned and the effects measured with `benchmarks/perf_depth_v1_min_max.ipynb`.
 
 ## 3. Worked examples
 
@@ -172,7 +172,7 @@ This is what makes move choice sensible without any hand-written rules: extendin
 
 ## 4. Complexity
 
-One evaluation sweeps 361 cells x 4 axes; each `measure_line` walk visits at most ~20 cells (run + free before hitting border/opponent). A handful of thousands of cell visits — microseconds. The `benchmarks/perf_depth.ipynb` notebook measures the real numbers and plots them.
+One evaluation sweeps 361 cells x 4 axes; each `measure_line` walk visits at most ~20 cells (run + free before hitting border/opponent). A handful of thousands of cell visits — microseconds. The benchmark notebooks measure the real numbers and plot them.
 
 ## 5. The evaluator inside the min-max search
 
@@ -355,10 +355,11 @@ blocking the win scores strictly higher; in both logged sessions the damage was 
 the fork, and depth 4 simply reports the truth sooner.
 
 Practical consequence for the naive variant alone: the playable range is `depth 2`-`3`; the
-default depth of 3 sits at the top of it. The `benchmarks/perf_depth.ipynb` notebook documents
-both variants side by side: single-run measurements (naive depths 1-4, alpha-beta depths 1-5)
-on the benchmark position, score equality asserted, with the theoretical `O(B^depth)` model
-and the ideal `O(B^(depth/2))` guide overlaid.
+default depth of 3 sits at the top of it. The benchmark notebooks document this scaling:
+`benchmarks/perf_depth_v1_min_max.ipynb` measures the naive search alone at depths 1-4,
+and `benchmarks/perf_depth_v2_alpha_beta.ipynb` measures both variants side by side
+(naive depths 1-4, alpha-beta depths 1-5) with score equality asserted, the theoretical
+`O(B^depth)` model and the ideal `O(B^(depth/2))` guide overlaid.
 
 ## 6. Candidate selection
 

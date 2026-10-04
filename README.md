@@ -58,7 +58,8 @@ connect6/                the engine package
 ├── protocol.py          text protocol I/O: `move2msg`/`msg2move`, board printing, logging
 └── defines.py           constants, `Color`/`GameResult` enums, frozen `Position`/`Move`, tuple aliases
 tests/test.py            the test suite
-benchmarks/perf_depth.ipynb  depth-vs-time benchmark
+benchmarks/perf_depth_v1_min_max.ipynb    min-max-only depth benchmark
+benchmarks/perf_depth_v2_alpha_beta.ipynb min-max vs alpha-beta benchmark
 docs/EVALUATION.md       evaluation & search documentation
 ```
 
@@ -84,6 +85,9 @@ The codebase is fully typed: `Color`/`GameResult` enums, frozen `Position`/`Move
 
 ## Benchmarks
 
-Open `benchmarks/perf_depth.ipynb` (Jupyter, or PyCharm's built-in notebook support) and run all cells (~1 minute: the naive depth-4 search dominates). It measures both variants — `search_min_max` at depths 1–4, `search_alpha_beta` at depths 1–5, one run each on a fixed mid-game board — asserts they return identical scores, prints the combined time/node/growth table, and plots both curves against the theoretical `O(B^depth)` model and the ideal `O(B^(depth/2))` guide.
+Two benchmark notebooks, both runnable in Jupyter or PyCharm's built-in notebook support on a fixed mid-game board:
+
+- `benchmarks/perf_depth_v1_min_max.ipynb` — the min-max baseline: `search_min_max` at depths 1–4 (one run each, ~1 minute: the depth-4 search dominates), plotted against the theoretical `O(B^depth)` model.
+- `benchmarks/perf_depth_v2_alpha_beta.ipynb` — the comparison: `search_min_max` at depths 1–4 and `search_alpha_beta` at depths 1–5, asserting identical scores, printing the combined time/node/growth table, and plotting both curves against the theoretical `O(B^depth)` model and the ideal `O(B^(depth/2))` guide.
 
 See [docs/EVALUATION.md](docs/EVALUATION.md) for a full walkthrough of the evaluation function and living-set counting, with worked examples.
