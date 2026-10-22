@@ -44,6 +44,23 @@ LIVE_WEIGHTS: Final[tuple[int, ...]] = (
     int(SetWeight.LIVE_FIVE),
 )
 
+# Space multiplier for living sets, indexed by min(free - (6 - length), 2):
+# the number of extra completable 6-windows beyond the only one. A set that
+# fits in exactly one window is worth the plain tier weight; two windows
+# double it, three or more triple it. Live fives are excluded: one open end
+# already wins next move, and no living set may reach the terminal scores.
+WINDOW_FACTOR: Final[tuple[int, ...]] = (1, 2, 3)
+
+# Threat vocabulary (thesis: a side has t threats iff the opponent must place
+# t stones to stop it connecting six; the defender places two stones per turn,
+# so three or more simultaneous threats win). THREAT_WIN is the sentinel a
+# completed-6-window returns from the sliding window; 7 is unmistakable next
+# to any real count. THREAT_WEIGHT prices one threat into the pair ranking:
+# one forced defender stone is worth one live-4 tier of urgency.
+THREAT_WIN: Final = 7
+THREAT_WEIGHT: Final = int(SetWeight.LIVE_FOUR)
+THREAT_RANK_WIDTH: Final = 10  # Pairs per node re-ranked by threat count (cost gate).
+
 # Lightweight hot-path companions of Position/Move: plain tuples so that
 # construction and hashing stay at C speed inside the search.
 Cell = tuple[int, int]  # (x, y)

@@ -53,7 +53,8 @@ connect6/                the engine package
 ├── game_engine.py       game loop, command protocol, move handling, game-end announcements
 ├── search.py            min-max + alpha-beta over one unified `_alpha_beta` loop (prune flag selects the variant)
 ├── evaluation.py        static evaluation: terminal scores, living-stone-set counting
-├── candidates.py        candidate generation: line-potential cell scoring, pairing, completion pairs
+├── candidates.py        candidate generation: line-potential cell scoring, co-linear-corrected pairing, threat re-rank, completion pairs
+├── threats.py           threat counting: sliding-window defender-forcing lines, joint two-stone counts
 ├── board.py             board rules: win/draw detection (`check_game_end`), the `measure_line` walk, `copy_board`
 ├── protocol.py          text protocol I/O: `move2msg`/`msg2move`, board printing, logging
 └── defines.py           constants, `Color`/`GameResult` enums, frozen `Position`/`Move`, tuple aliases
@@ -63,7 +64,7 @@ benchmarks/perf_depth_v2_alpha_beta.ipynb min-max vs alpha-beta benchmark
 docs/EVALUATION.md       evaluation & search documentation
 ```
 
-- `search.py` is guided by the static evaluation of living stone sets and by candidate generation — cells scored by line potential (attack + defence, `MAX_CANDIDATE_CELLS` top cells paired into `MAX_CANDIDATE_MOVES` moves, plus injected two-stone completion pairs) — so wins and forced blocks are always considered. The engine searches with alpha-beta pruning (identical results to the naive min-max, ~15x fewer nodes at depth 3, ~41x at depth 4, making depth 4-5 playable); the naive variant stays as `search_min_max()` for the spec baseline and benchmarks ([docs/EVALUATION.md](docs/EVALUATION.md)).
+- `search.py` is guided by the static evaluation of living stone sets (weighted by tier and by space: `WINDOW_FACTOR` multiplies sets with extra completable 6-windows) and by candidate generation — cells scored by line potential (attack + defence, `MAX_CANDIDATE_CELLS` top cells paired into `MAX_CANDIDATE_MOVES` moves, plus injected two-stone completion pairs), with the top pairs re-ranked by the defender-forcing threats they create (`THREAT_WEIGHT` per threat, thesis counting in `threats.py`) — so wins, forks and forced blocks are always considered. The engine searches with alpha-beta pruning (identical results to the naive min-max, ~14x fewer nodes at depth 3, ~44x at depth 4, making depth 4-5 playable); the naive variant stays as `search_min_max()` for the spec baseline and benchmarks ([docs/EVALUATION.md](docs/EVALUATION.md)).
 
 The full call flow of a `move` command — from stdin through the search loop to the printed reply — is diagrammed in [docs/EVALUATION.md, section 5](docs/EVALUATION.md#5-the-evaluator-inside-the-min-max-search).
 
@@ -73,7 +74,7 @@ The full call flow of a `move` command — from stdin through the search loop to
 uv run tests/test.py
 ```
 
-Covers board state, win/draw termination, color helpers, static evaluation, candidate generation, min-max search (including forced-block regression tests), and alpha-beta equivalence: same scores and winning/blocking moves as the naive search, strictly fewer nodes.
+Covers board state, win/draw termination, color helpers, static evaluation (tier weights and the window factor), candidate generation (co-linear pair correction) and threat counting (sliding window, joint two-stone counts, fork ranking), min-max search (including forced-block regression tests), and alpha-beta equivalence: same scores and winning/blocking moves as the naive search, strictly fewer nodes.
 
 ## Type checking
 

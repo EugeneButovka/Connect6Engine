@@ -386,33 +386,33 @@ The whole pipeline in one picture (`generate_candidate_moves`, one call per inte
     in its 8-neighbourhood                      in its 8-neighbourhood
           |                                                 |
           v                                                 v
-  +------------------+                              fillers (score 0)
-  | _score_position  |   attack + defence
-  | (stage 1, 6.3)   |   per cell, 4 axes x 2 colours
-  +------------------+
-          |
-    scored cells, sorted by score, descending
-          |
-          +---------------------+----------------------+
-          |                                            |
-          v                                            v
-  top MAX_CANDIDATE_CELLS = 16 cells      cells scoring >= SetWeight.LIVE_FIVE
-          |                                            |
-          v                                            v
-  +------------------+                    +---------------------------+
-  | all C(16,2)=120  |                    | _find_completion_pairs    |
-  | ranked by sum    |                    | (stage 3, 6.5): one      |
-  | (stage 2, 6.4)   |                    | max_free=0 walk per axis  |
-  +------------------+                    +---------------------------+
-          |                                            |
-          +---------> injected pairs come first <-----+
-                            |
-                            v
-               top MAX_CANDIDATE_MOVES = 30 moves
-                            |
-                            v
-         search / _alpha_beta: one candidate per child,
-         make_move -> recurse -> unmake_move (section 5)
++------------------+                              fillers (score 0)
+   | _score_position  |   attack + defence
+   | (stage 1, 6.3)   |   per cell, 4 axes x 2 colours
+   +------------------+
+           |
+     scored cells, sorted by score, descending
+           |
+           +---------------------+----------------------+
+           |                                            |
+           v                                            v
+   top MAX_CANDIDATE_CELLS = 16 cells      cells scoring >= SetWeight.LIVE_FIVE
+           |                                            |
+           v                                            v
+   +------------------+                    +---------------------------+
+   | all C(16,2)=120  |                    | _find_completion_pairs    |
+   | ranked by sum    |                    | (stage 3, 6.5): one      |
+   | (stage 2, 6.4)   |                    | max_free=0 walk per axis  |
+   +------------------+                    +---------------------------+
+           |
+           +---------> injected pairs come first <-----+
+                             |
+                             v
+                top MAX_CANDIDATE_MOVES = 30 moves
+                             |
+                             v
+          search / _alpha_beta: one candidate per child,
+          make_move -> recurse -> unmake_move (section 5)
 ```
 
 ### 6.1 Why "most stone neighbours" fails
@@ -554,3 +554,283 @@ Three regression tests pin the behaviour (tests/test.py, Search Tests 10-12):
 - **Sets are counted independently**: two collinear runs sharing one empty gap (a "broken three" pattern) are valued as two sets, not as the combined threat they really are.
 - **Singles contribute noise** (+1 per stone per axis) — symmetric between players, but a richer pattern table would score by pattern type instead.
 - **The candidate pool has a single-cell horizon**: pairs come from the 16 highest-scoring cells plus the 5-run injections. A double threat whose two key cells each score low individually (e.g. gap-bridging patterns that need two specific stones to connect two runs) can still slip past the generator — injection only covers 5-run extensions, not arbitrary two-stone tactics.
+
+## 8. Changes review — space, co-linearity, and threats
+
+Sections 1-7 describe the core engine as originally built. This section reviews the strategy
+upgrade implemented afterwards, motivated by the defensive-strategy study of the Liu & Lin
+thesis (`docs/Defensive-Strategy-Insights.md`; plan in `docs/Implementation-Plan.md`). Three
+changes, each with motivation, mechanism, which earlier section it amends, and its measured
+effect. The new constants live in `connect6/defines.py` (`WINDOW_FACTOR`, `THREAT_WIN`,
+`THREAT_WEIGHT`, `THREAT_RANK_WIDTH`); the new counting code is `connect6/threats.py`.
+
+| change | what it fixes | where it lives | amends |
+|---|---|---|---|
+| 8.1 window factor | identical patterns with different liberty score the same | `WINDOW_FACTOR`, applied in `_score_living_sets` + `_score_position` | sections 2, 3 |
+| 8.2 co-linear pair correction | pair sums double-count patterns on a shared line | `_pair_correction` in candidates.py | section 6.4 |
+| 8.3 threat counting | forcing moves are invisible to independently-scored stones | threats.py + `_rank_by_threats` in candidates.py | sections 6.4, 6.6, 7 |
+
+### Definitions
+
+Only the engine's own vocabulary is defined here — its constants, formulas, and conventions
+(the base terms live in sections 2, 5 and 6). Standard search-tree vocabulary (node, leaf,
+ply, depth, horizon, alpha-beta) and the game's own rules (the two-stone move, blocking) are
+used as-is.
+
+**Board and lines**
+
+- **set (run)** — a maximal run of same-color stones along one of the board's 4 axes.
+- **length / free** — `measure_line`'s output for a set: the count of contiguous same-color stones, and the count of contiguous empty cells immediately beyond each end.
+- **living set** — one with `length + free >= 6`: the space around it still allows a six.
+- **live-N / single / tier weight** — the per-length value scale `LIVE_WEIGHTS = (1, 10, 100, 1000, 10000)`, named by the `SetWeight` enum; a living set of length N is a live-N worth `LIVE_WEIGHTS[N]` — a *single* is a live-1, a live-4 weighs 1000, a live-5 weighs 10000.
+- **6-window** — any 6 consecutive cells along one axis; a completed six is exactly a window filled with one color. Both the surplus and every threat are counted in windows.
+- **co-linear** — two cells lying on one shared axis (row, column, or diagonal): `dx == 0` or `dy == 0` or `|dx| == |dy|` between them.
+- **cramped / spacious** — a living set that fits in exactly one completable 6-window vs one that spans several.
+
+**Scoring**
+
+- **scratch board** — the `copy_board` copy every `generate_candidate_moves` call works on, so the caller's board is never mutated.
+- **virtual stone** — a stone temporarily placed on the scratch board to measure what a cell or move would be worth, then restored.
+- **cell score** — `_score_position`'s value for one cell: attack (virtual own-color stone) + defence (virtual opponent stone), summed over the 4 axes.
+- **surplus** — `free - (6 - length)` for a living set: the number of extra completable 6-windows beyond the only one — the set's *liberty*. `0` = cramped, `>= 2` = spacious.
+- **WINDOW_FACTOR** — `(1, 2, 3)` in defines.py, indexed by `min(surplus, 2)`; the space multiplier of 8.1.
+- **fixed first-player frame** — every score is written from Black's point of view: positive = better for Black, negative = better for White; a position mirrored between the colors scores exactly 0.
+- **terminal scores** — `±MAXINT` (±20000) returned when the last move completed a six, `0` for a full-board draw; the heuristic's top set weight (10000) is deliberately half of `MAXINT`.
+- **root score** — the value the search assigns to the current position: the best outcome the side to move can guarantee within the depth horizon, in the fixed first-player frame. Horizon-relative by construction — the same position scores differently at different depths (8.4).
+
+**Candidates**
+
+- **completion pair** — the two cells that together extend a virtual 5-run to six; injected ahead of all ranked pairs (stage 3, section 6.5).
+- **corrected sum** — a pair's `score_a + score_b` after the co-linear correction of 8.2.
+- **anchor effect** — the top-scored cell appears in most generated pairs, because `top + partner` outranks `weaker + weaker` (section 6.4).
+
+**Threats**
+
+- **defence point** — an empty cell of a threat window; one defender stone there kills that window.
+- **threat** — a 6-window with no defender stone and at least 4 attacker stones: it forces at least one defender stone. A side has *t* threats when the opponent must place *t* stones to stop all its sixes.
+- **THREAT_WIN** — the sentinel (7) returned when a window already holds six attacker stones: the move completes a six.
+- **joint threat count** — `count_move_threats` for a two-stone pair: the threats over the 4 axes after placing both stones.
+- **merged slice** — on an axis the two stones share, the union of their ±5-cell influence ranges, counted in one pass so shared defence points count once.
+- **fork** — a two-stone move whose threats live on two independent axes (4 threats); unbeatable per the 3-threats theorem.
+- **THREAT_WEIGHT** — 1000 (= `SetWeight.LIVE_FOUR`): the ranking price of one threat.
+- **THREAT_RANK_WIDTH** — 10: how many of the top-ranked pairs the threat re-rank processes.
+
+**Measurement (8.4)**
+
+- **base / upgraded engine** — the engine as sections 1-7 describe it, vs the same engine with this section's three changes applied.
+
+### 8.1 The window factor (amends sections 2 and 3)
+
+**Motivation.** Section 2's tier weights value a live-4 at 1000 regardless of whether it is
+squeezed into exactly one completable 6-window (one way to finish, one way to block) or
+sprawled across an open board (several alternative completions, much harder to defend).
+Identical tactics, different liberty, same number.
+
+**Mechanism.** The honest unit for liberty is already computed by `measure_line`: for a
+living set of length `L` with `free` empty cells, liveness consumes `6 − L` of them, so
+
+```
+surplus = free - (6 - length)      # extra completable 6-windows beyond the only one
+
+value = LIVE_WEIGHTS[min(length, 5)] x WINDOW_FACTOR[min(surplus, 2)]
+
+WINDOW_FACTOR = (1, 2, 3)           # one window / two windows / three or more
+
+cramped live-4 (free == 2)    -> 1000 x 1 = 1000
+two-window live-4 (free == 3) -> 1000 x 2 = 2000
+spacious live-4 (free >= 4)  -> 1000 x 3 = 3000
+```
+
+Both scoring sites apply it — the leaf evaluator `_score_living_sets` and the generator's
+`_score_position` — so the "one language" property of section 6.3 survives; the two sites
+measure `free` with different walk caps, but both surpluses cap at the same factor.
+
+**Live fives are excluded on purpose.** A live-5 with one open end already wins next move —
+space adds nothing tactically — and the exclusion protects the arithmetic: a doubled live-5
+would *equal* `MAXINT` (20000) and collide with terminal detection, a tripled one would
+outrank an actual win. Length-5 sets therefore stay at the plain tier weight.
+
+**What this changes in section 2.** The dominance invariant "ten sets of one tier equal one
+of the next" becomes: one set of a tier dominates up to *three* sets of the tier below even
+when those are spacious (`3 x 3000 = 9000 < 10000`); ten *cramped* sets of one tier still
+equal one of the next. Three same-tier sets is comfortably beyond realistic board counts, so
+the geometric argument survives with headroom. Singles get louder too: a lone stone on an
+open board spans up to six windows per axis (`surplus = 18 - 5 = 13`, capped) and now scores
+`4 x 1 x 3 = 12` — the mobility signal strengthens symmetrically for both players, so
+balanced positions still cancel (the mirror and axis-parity tests, Eval Tests 7 and 9, pin
+this).
+
+**What this changes in section 3.** Every worked example shifts; the same positions now
+score:
+
+| example | section 3 | with the factor |
+|---|---|---|
+| lone stone | 4 | 12 |
+| open 4-run (empty board) | 1012 | 3036 (3000 + 36 singles) |
+| same 4-run, blocked both ends | 12 | 36 (the 36 singles survive) |
+| full position (4-run vs 2-run) | 996 | 2988 |
+| horizontal vs diagonal 3-run | 109 | 327 each |
+
+**Tests.** Eval Test 8 was reworked (`3 x SetWeight.LIVE_FOUR` difference); new Eval Tests
+11-12 pin the growth (`test_spacious_set_outvalues_cramped_set`) and the cap
+(`test_window_factor_caps`).
+
+### 8.2 The co-linear pair correction (amends section 6.4)
+
+**Motivation.** The raw pair sum `score_a + score_b` double-counts one class of pairs: two
+empty cells on the *same line* with only empties between them. Each cell's score is measured
+in isolation, so each already credits the pattern the other would complete — placing both
+creates one merged run, but the sum pays for it roughly twice, and genuinely independent
+two-front moves rank below it. This is the double-counting the thesis corrects in its threat
+sums (section 4.3.4), adapted to score units.
+
+**Mechanism.** `_pair_correction(board, cell_a, cell_b)` (connect6/candidates.py) repairs the
+sum with three distance cases:
+
+```
+cells share no axis                          -> sum unchanged
+a stone stands between them on the axis      -> sum unchanged (independent contributions)
+distance <= 6  (one 6-window spans both)      -> sum - smaller_score // 2
+distance 7..11 (influence areas still touch)  -> sum - smaller_score // 4
+distance >= 12 (influence areas disjoint)     -> sum unchanged
+```
+
+"Shares an axis" is the same co-linearity test used everywhere else (`dx == 0`, `dy == 0`, or
+`|dx| == |dy|`); the between-walk stops at the first stone of *either* color. Completion
+pairs from stage 3 bypass ranking, so no forcing move is ever corrected. Cost: an O(1)
+co-linearity check per pair plus a short walk for the rare co-linear ones — measured at
+~3% on the naive depth-3 node cost.
+
+**What this changes in section 6.4.** The ranking key is no longer the raw sum but the
+corrected one; the double-block property survives untouched (blocked-between pairs are never
+corrected, and the block cells' pair keeps the maximum sum).
+
+**Tests.** Candidate Ranking Tests 1-3: `test_colinear_pair_ranks_below_split_pair` (a
+clear-gap co-linear pair ranks below equal-score blocked and split pairs on a real board),
+`test_colinear_correction_requires_clear_gap`, `test_colinear_correction_stops_at_twelve`.
+
+### 8.3 Threat counting and the threat re-rank (amends sections 6.4, 6.6, 7)
+
+**The vocabulary.** From the thesis: a side has **t threats** iff the opponent must place
+**t stones** to stop it connecting six. The defender places **two** stones per turn, every
+threat demands at least one of them on a distinct defence point, so **three or more
+simultaneous threats are a won game**; even two consume the defender's entire move. Threats
+are the unit of forcing — and they are created by two stones *together*, which is why they
+belong at pair level, above the individually-scored cells.
+
+**The counter.** `count_line_threats(cells, attacker)` (connect6/threats.py) slides a
+6-window across one extracted line slice (11 cells around a stone, borders read as defender
+stones):
+
+1. a window containing a **defender stone** can never complete — skip;
+2. a window of **six attacker stones** is a completed six — return the `THREAT_WIN` (7)
+   sentinel immediately;
+3. a window with **no defender, no already-marked point, and >= 4 attacker stones** is a
+   threat: mark its empty cells, count 1.
+
+Marking is the load-bearing trick — two windows that share an empty share that defence point,
+so the second counts **once**, not twice: an open live-4 spans three windows but is worth 2
+threats (block either end). Measured on the standard patterns:
+
+```
+. X X X X X .        open live-5   -> 2 threats
+* X X X X X .        one-sided 5   -> 1
+. . X X X X . .      open live-4   -> 2
+* X X X X . .        dead 4        -> 1
+X X X X X X          completed six -> THREAT_WIN
+```
+
+**Joint counting.** `count_move_threats(board, x1, y1, x2, y2, color)` places both stones on
+the caller's scratch board, counts, restores. Per axis: if the stones share that axis and
+sit at most 10 cells apart, it walks **one merged slice** covering both influence ranges in
+a single pass; otherwise each stone's slice is counted independently and added. The merged
+single pass is what makes the thesis's per-stone correction scheme unnecessary: summing two
+independent counts would double-charge shared defence points, but one pass over the union
+marks them once. The thesis's pattern A shows the effect: two stones that each *alone* look
+like a 2-threat live-4 extension count **2** jointly, not 4. A perpendicular fork, by
+contrast, creates threats on two independent axes and counts the honest 4 — already a win
+by the theorem.
+
+**The re-rank.** After the corrected sum sort, the top `THREAT_RANK_WIDTH` (10) pairs are
+re-scored and re-sorted:
+
+```
+pair value = corrected_sum + THREAT_WEIGHT x count_move_threats(pair, side to move)
+```
+
+`THREAT_WEIGHT = 1000 = SetWeight.LIVE_FOUR` prices one forced defender stone at one live-4
+tier of urgency, so a double-threat pair outranks any quiet pair that merely blocks and
+extends. A pair whose joint count returns `THREAT_WIN` — a completed 6-window after both
+stones — jumps ahead of *all* ranked pairs: these are the two-stone gap-bridging wins the
+single-cell gate of section 6.5 cannot see (it needs a virtual 5-run after *one* stone).
+Pairs beyond the top 10 keep their sum order; boosts only ever raise a pair, so the
+re-ranked block stays ahead of the untouched tail. The side-to-move color is threaded
+through `generate_candidate_moves` so the threats counted are the mover's.
+
+The width is a pure cost dial: at 30 pairs the re-rank cost ~21% extra per node on naive
+depth 3 and pushed the pruned depth-4 reply from ~2.4 s to ~3.3 s — over the plan's 25%
+gate — so it shipped at 10 (~9% / ~17% respectively). Only the moved stones' axes are
+counted; windows elsewhere are identical for every pair and cancel in the ordering.
+
+**What this changes.**
+
+- Section 6.4: the ranking pipeline is *sum sort -> co-linear correction -> threat re-rank of
+  the top 10 -> win pairs to the front*; the anchor-effect observation still holds.
+- Section 6.6: 10 joint counts per node are added to the candidate-generation cost (4 axis
+  slices of at most 21 cells, at most 16 windows per slice).
+- Section 7, bullet 2: the joint recount *does* mark shared defence points once, so the
+  "broken three" blindness is partially compensated at ranking level — the leaf scores keep
+  the simpler independent-set model.
+- Section 7, bullet 4: within the top-10 sum ranks, the `THREAT_WIN` pass now catches the
+  gap-bridging two-stone tactics the 5-run injections never covered; beyond the top 10 the
+  single-cell horizon stands.
+
+**Deliberately not done.** No global threat differential in the leaf evaluation (~triple
+per-leaf cost for uncertain gain — the living-set model prices the stones, the window
+factor prices their liberty; the primitive to build it exists). And threat counts never
+replace the depth-limited search: a 3-threat fork is "won" only in the theorem's forcing
+sense — the search still walks the tree. As a side effect the engine now *creates* such
+forks deliberately instead of only surviving them.
+
+**Tests.** Threat Tests 1-10: the pattern table above at slice level (Tests 1-7), the joint
+sharing case and the fork (`test_joint_threats_share_defence`, `test_fork_creates_four_threats`),
+and the ranking integration (`test_double_threat_pair_outranks_higher_sum_pair` — a fork pair
+beats a higher-sum quiet pair once threats are counted).
+
+### 8.4 Measured impact
+
+The benchmark notebook was re-executed with the upgraded engine (its stored outputs are the
+"after" column; the notebook's score-equality assert passes at every depth). The tables in
+section 5 keep the base-engine measurements for comparison:
+
+| measurement | base engine | upgraded engine |
+|---|---|---|
+| naive d3 nodes / time | 27 931 / ~1.9 s | 27 931 / ~2.1 s |
+| naive d4 time | ~58 s | ~65 s |
+| alpha-beta d3 nodes / time | 1 857 / ~0.16 s | 2 012 / ~0.22 s |
+| alpha-beta d4 nodes / time | 20 035 / ~2.3 s | 19 034 / ~2.9 s |
+| alpha-beta d5 nodes / time | 84 039 / ~8.6 s | 84 491 / ~10.5 s |
+| root score, d3 / d4 | 10076 / 163 | 10228 / 491 |
+
+Reading it:
+
+- **The naive tree is unchanged in size** — 27 931 nodes at depth 3 in both engines: the
+  upgrades reorder candidates but never change how many are offered, and the naive variant
+  expands all of them. The time delta is therefore the *pure per-node cost* of the three
+  changes (~13%: ~3% correction + ~4% window factor + ~9% threat re-rank, measured
+  stepwise during implementation).
+- **Alpha-beta node counts drift with ordering** (pruning luck: 1 857 → 2 012 at depth 3,
+  20 035 → 19 034 at depth 4) while **scores stay provably identical** between the variants
+  at every depth — the re-rank changes only the order the same tree is explored in.
+- **Scores on the fixed benchmark position shift** (10076 → 10228, 163 → 491) because the
+  evaluator itself changed — expected, not a regression; the invariants that matter
+  (naive = alpha-beta, fixed-frame sign, mirror boards = 0) all hold.
+- **The root score also oscillates with depth parity** — 10228 at depth 3 vs 491 at depth 4
+  for the same position: the score is relative to the depth horizon, and whoever moves
+  *last* before each leaf gets an unanswered bonus (Black at odd depths, White at even
+  ones). The even-depth value is the more honest estimate; the base engine oscillated the
+  same way (10076/163).
+- **Reply times stay playable**: pruned depth 4 ≈ 2.9 s, depth 5 ≈ 10.5 s.
+
+The full suite grew from 52 to 67 tests: 15 new (Candidate Ranking 1-3, Threat 1-10,
+Eval 11-12) plus the reworked Eval Test 8, all registered in `tests/test.py`.

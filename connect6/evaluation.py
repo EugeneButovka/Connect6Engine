@@ -4,6 +4,7 @@ from .defines import (
     LIVE_WEIGHTS,
     MAXINT,
     MININT,
+    WINDOW_FACTOR,
     Board,
     Color,
     GameResult,
@@ -35,5 +36,8 @@ def _score_living_sets(board: Board, color: Color) -> int:
                     continue
                 length, free, _, _ = measure_line(board, x, y, direction)
                 if length + free >= 6:
-                    value += LIVE_WEIGHTS[min(length, 5)]
+                    weight = LIVE_WEIGHTS[min(length, 5)]
+                    if length < 5:
+                        weight *= WINDOW_FACTOR[min(free - (6 - length), 2)]
+                    value += weight
     return value

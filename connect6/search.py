@@ -47,7 +47,7 @@ def _alpha_beta(
     if depth <= 0:
         return SearchResult(pre_move, score)
 
-    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES)
+    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES, color)
     if len(candidates) == 0:
         return SearchResult(pre_move, score)
 

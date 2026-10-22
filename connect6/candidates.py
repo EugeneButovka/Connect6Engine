@@ -5,9 +5,14 @@ from .defines import (
     DIRECTIONS,
     GRID_NUM,
     MAX_CANDIDATE_CELLS,
+    MAX_CANDIDATE_MOVES,
+    THREAT_RANK_WIDTH,
+    THREAT_WEIGHT,
+    THREAT_WIN,
     LIVE_WEIGHTS,
     NOSTONE,
     BORDER,
+    WINDOW_FACTOR,
     Board,
     Move,
     Position,
@@ -16,9 +21,10 @@ from .defines import (
     SetWeight,
 )
 from .board import copy_board, measure_line
+from .threats import count_move_threats
 
 
-def generate_candidate_moves(board: Board, limit: int) -> list[Move]:
+def generate_candidate_moves(board: Board, limit: int, color: Color) -> list[Move]:
     scratch = copy_board(board)
     cells, completion_pairs = _get_scored_cells(scratch)
     cells = cells[:MAX_CANDIDATE_CELLS]
@@ -29,8 +35,9 @@ def generate_candidate_moves(board: Board, limit: int) -> list[Move]:
     pairs: list[RankedPair] = []
     for i in range(len(cells)):
         for j in range(i + 1, len(cells)):
-            pairs.append((cells[i][0] + cells[j][0], i, j))
+            pairs.append((_pair_correction(scratch, cells[i], cells[j]), i, j))
     pairs.sort(reverse=True)
+    pairs = _rank_by_threats(scratch, cells, pairs, color)
     for _, i, j in pairs:
         if len(moves) >= limit:
             return moves
@@ -65,10 +72,59 @@ def _score_position(board: Board, x: int, y: int) -> int:
         for direction in DIRECTIONS:
             length, free, _, _ = measure_line(board, x, y, direction, 6, 6)
             if length + free >= 6:
-                value += LIVE_WEIGHTS[min(length, 5)]
+                weight = LIVE_WEIGHTS[min(length, 5)]
+                if length < 5:
+                    weight *= WINDOW_FACTOR[min(free - (6 - length), 2)]
+                value += weight
         board[x][y] = NOSTONE
         total += value
     return total
+
+
+def _rank_by_threats(
+    board: Board,
+    cells: list[ScoredCell],
+    pairs: list[RankedPair],
+    color: Color,
+) -> list[RankedPair]:
+    top = pairs[:THREAT_RANK_WIDTH]
+    win_pairs: list[RankedPair] = []
+    ranked: list[RankedPair] = []
+    for score, i, j in top:
+        threats = count_move_threats(board, cells[i][1], cells[i][2], cells[j][1], cells[j][2], color)
+        if threats >= THREAT_WIN:
+            win_pairs.append((score, i, j))
+        else:
+            ranked.append((score + THREAT_WEIGHT * threats, i, j))
+    win_pairs.sort(reverse=True)
+    ranked.sort(reverse=True)
+    return win_pairs + ranked + pairs[THREAT_RANK_WIDTH:]
+
+
+def _pair_correction(board: Board, cell_a: ScoredCell, cell_b: ScoredCell) -> int:
+    score_a, x1, y1 = cell_a
+    score_b, x2, y2 = cell_b
+    score_sum = score_a + score_b
+    dx = x2 - x1
+    dy = y2 - y1
+    if dx != 0 and dy != 0 and abs(dx) != abs(dy):
+        return score_sum
+    distance = max(abs(dx), abs(dy))
+    if distance >= 12:
+        return score_sum
+    step_x = (dx > 0) - (dx < 0)
+    step_y = (dy > 0) - (dy < 0)
+    walker_x = x1 + step_x
+    walker_y = y1 + step_y
+    while walker_x != x2 or walker_y != y2:
+        if board[walker_x][walker_y] != NOSTONE:
+            return score_sum
+        walker_x += step_x
+        walker_y += step_y
+    smaller = score_a if score_a < score_b else score_b
+    if distance <= 6:
+        return score_sum - smaller // 2
+    return score_sum - smaller // 4
 
 
 def _find_completion_pairs(board: Board, x: int, y: int) -> list[CompletionPair]:

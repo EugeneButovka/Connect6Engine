@@ -9,12 +9,14 @@ from connect6.board import init_board, _is_board_full, _is_win_by_move, check_ga
 from connect6.game_engine import GameEngine
 from connect6.protocol import color_to_name, move2msg, msg2move
 from connect6.evaluation import evaluate, _score_living_sets
-from connect6.candidates import generate_candidate_moves
+from connect6.candidates import generate_candidate_moves, _pair_correction
+from connect6.threats import count_line_threats, count_move_threats
 from connect6.search import search_alpha_beta, search_min_max
 from connect6.defines import (
     ENGINE_NAME,
     GRID_NUM,
     SetWeight,
+    THREAT_WIN,
     MAXINT,
     MAX_CANDIDATE_MOVES,
     MININT,
@@ -215,7 +217,7 @@ def candidates_are_valid(board, candidates):
 def test_candidate_limit():
     board = create_empty_board()
     board[10][10] = Color.BLACK
-    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES)
+    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES, Color.WHITE)
     assert len(candidates) == MAX_CANDIDATE_MOVES
     assert candidates_are_valid(board, candidates)
     print("Search Test 1 - Fixed limit of candidates: PASS")
@@ -224,7 +226,7 @@ def test_candidate_limit():
 def test_candidates_skip_occupied():
     board = create_empty_board()
     board[10][10] = Color.BLACK
-    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES)
+    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES, Color.WHITE)
     for move in candidates:
         assert board[move.positions[0].x][move.positions[0].y] == NOSTONE
         assert board[move.positions[1].x][move.positions[1].y] == NOSTONE
@@ -234,7 +236,7 @@ def test_candidates_skip_occupied():
 def test_candidates_near_stones():
     board = create_empty_board()
     board[10][10] = Color.BLACK
-    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES)
+    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES, Color.WHITE)
     first = candidates[0]
     assert abs(first.positions[0].x - 10) <= 1 and abs(first.positions[0].y - 10) <= 1
     print("Search Test 3 - Candidates ordered near stones: PASS")
@@ -246,7 +248,7 @@ def test_candidates_few_empties():
     board[5][2] = NOSTONE
     board[5][3] = NOSTONE
     board[5][4] = NOSTONE
-    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES)
+    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES, Color.WHITE)
     assert len(candidates) == 3
     print("Search Test 4 - Few empties produce all pairs: PASS")
 
@@ -254,14 +256,14 @@ def test_candidates_few_empties():
 def test_candidates_full_board():
     board = create_empty_board()
     fill_board_no_line(board)
-    assert generate_candidate_moves(board, MAX_CANDIDATE_MOVES) == []
+    assert generate_candidate_moves(board, MAX_CANDIDATE_MOVES, Color.WHITE) == []
     print("Search Test 5 - No candidates on full board: PASS")
 
 
 def test_candidates_custom_limit():
     board = create_empty_board()
     board[10][10] = Color.BLACK
-    assert len(generate_candidate_moves(board, 5)) == 5
+    assert len(generate_candidate_moves(board, 5, Color.WHITE)) == 5
     print("Search Test 6 - Custom limit: PASS")
 
 
@@ -340,7 +342,7 @@ def test_dead_set_is_worthless():
     open_board = create_empty_board()
     for y in range(8, 12):
         open_board[10][y] = Color.BLACK
-    assert _score_living_sets(open_board, Color.BLACK) - _score_living_sets(dead, Color.BLACK) == SetWeight.LIVE_FOUR
+    assert _score_living_sets(open_board, Color.BLACK) - _score_living_sets(dead, Color.BLACK) == 3 * SetWeight.LIVE_FOUR
     print("Eval Test 8 - Dead set contributes nothing: PASS")
 
 
@@ -366,6 +368,175 @@ def test_longer_set_worth_more():
         two_pairs[15][y] = Color.BLACK
     assert _score_living_sets(three, Color.BLACK) > _score_living_sets(two_pairs, Color.BLACK)
     print("Eval Test 10 - Longer sets outweigh more shorter ones: PASS")
+
+
+def test_spacious_set_outvalues_cramped_set():
+    spacious = create_empty_board()
+    for y in range(8, 12):
+        spacious[10][y] = Color.BLACK
+    cramped = create_empty_board()
+    for y in range(8, 12):
+        cramped[10][y] = Color.BLACK
+    cramped[10][7] = Color.WHITE
+    cramped[10][14] = Color.WHITE
+    assert _score_living_sets(spacious, Color.BLACK) - _score_living_sets(cramped, Color.BLACK) == 2 * SetWeight.LIVE_FOUR
+    print("Eval Test 11 - Spacious sets outweigh cramped ones: PASS")
+
+
+def test_window_factor_caps():
+    three_windows = create_empty_board()
+    for y in range(8, 12):
+        three_windows[10][y] = Color.BLACK
+    three_windows[10][7] = Color.WHITE
+    three_windows[10][16] = Color.WHITE
+    many_windows = create_empty_board()
+    for y in range(8, 12):
+        many_windows[10][y] = Color.BLACK
+    assert _score_living_sets(three_windows, Color.BLACK) == _score_living_sets(many_windows, Color.BLACK)
+    print("Eval Test 12 - The window factor caps at three windows: PASS")
+
+
+# ============================================================
+# CANDIDATE RANKING TESTS
+# ============================================================
+
+def pair_set(move):
+    return frozenset(placed_cells(move))
+
+
+def test_colinear_pair_ranks_below_split_pair():
+    board = create_empty_board()
+    for y in list(range(3, 6)) + list(range(9, 12)):
+        board[10][y] = Color.WHITE
+    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES, Color.BLACK)
+    pairs_in_order = [pair_set(move) for move in candidates]
+    clear_gap = frozenset({(10, 6), (10, 8)})
+    assert pairs_in_order.index(frozenset({(10, 2), (10, 12)})) < pairs_in_order.index(clear_gap)
+    assert pairs_in_order.index(frozenset({(10, 2), (10, 6)})) < pairs_in_order.index(clear_gap)
+    assert pairs_in_order.index(frozenset({(10, 12), (10, 8)})) < pairs_in_order.index(clear_gap)
+    print("Candidate Ranking Test 1 - Co-linear pairs rank below split pairs: PASS")
+
+
+def test_colinear_correction_requires_clear_gap():
+    board = create_empty_board()
+    clear = _pair_correction(board, (100, 10, 4), (60, 10, 6))
+    diagonal = _pair_correction(board, (100, 10, 10), (60, 13, 13))
+    board[10][5] = Color.BLACK
+    blocked = _pair_correction(board, (100, 10, 4), (60, 10, 6))
+    assert clear == 130
+    assert diagonal == 130
+    assert blocked == 160
+    print("Candidate Ranking Test 2 - Correction requires a clear gap: PASS")
+
+
+def test_colinear_correction_stops_at_twelve():
+    board = create_empty_board()
+    near = _pair_correction(board, (100, 10, 2), (60, 10, 8))
+    mid = _pair_correction(board, (100, 10, 2), (60, 10, 9))
+    late = _pair_correction(board, (100, 10, 2), (60, 10, 13))
+    far = _pair_correction(board, (100, 10, 2), (60, 10, 14))
+    off_axis = _pair_correction(board, (100, 10, 2), (60, 12, 9))
+    assert near == 130
+    assert mid == 145
+    assert late == 145
+    assert far == 160
+    assert off_axis == 160
+    print("Candidate Ranking Test 3 - Correction fades with distance: PASS")
+
+
+# ============================================================
+# THREAT TESTS
+# ============================================================
+
+BLACK_STONE = Color.BLACK.value
+DEFENDER = Color.WHITE.value
+
+
+def test_live_five_open_is_two_threats():
+    assert count_line_threats([0, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, 0], BLACK_STONE) == 2
+    assert count_line_threats([0, 0, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, 0, 0], BLACK_STONE) == 2
+    print("Threat Test 1 - An open live five forces two blocks: PASS")
+
+
+def test_live_five_blocked_is_one_threat():
+    assert count_line_threats([DEFENDER, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, 0], BLACK_STONE) == 1
+    print("Threat Test 2 - A blocked live five forces one block: PASS")
+
+
+def test_open_live_four_is_two_threats():
+    assert count_line_threats([0, 0, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, 0, 0], BLACK_STONE) == 2
+    print("Threat Test 3 - An open live four forces two blocks: PASS")
+
+
+def test_dead_live_four_is_one_threat():
+    assert count_line_threats([DEFENDER, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, 0, 0], BLACK_STONE) == 1
+    print("Threat Test 4 - A dead live four forces one block: PASS")
+
+
+def test_completed_six_is_threat_win():
+    assert count_line_threats([0, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, 0], BLACK_STONE) == THREAT_WIN
+    print("Threat Test 5 - A completed six is the win sentinel: PASS")
+
+
+def test_overlapping_windows_count_once():
+    assert count_line_threats([0, 0, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, BLACK_STONE, 0, 0], BLACK_STONE) == 2
+    print("Threat Test 6 - Overlapping windows share one defence: PASS")
+
+
+def test_quiet_slice_has_no_threats():
+    assert count_line_threats([0] * 11, BLACK_STONE) == 0
+    assert count_line_threats([DEFENDER, DEFENDER, 0, DEFENDER, DEFENDER, 0, DEFENDER], BLACK_STONE) == 0
+    print("Threat Test 7 - Quiet lines hold no threats: PASS")
+
+
+def create_bridge_board():
+    board = create_empty_board()
+    for y in (3, 4, 5, 9, 10, 11):
+        board[10][y] = Color.BLACK
+    return board
+
+
+def test_joint_threats_share_defence():
+    board = create_bridge_board()
+    alone_near = count_move_threats(board, 10, 6, 15, 15, Color.BLACK)
+    alone_far = count_move_threats(board, 10, 7, 15, 15, Color.BLACK)
+    joint = count_move_threats(board, 10, 6, 10, 7, Color.BLACK)
+    assert alone_near == 2
+    assert alone_far == 2
+    assert joint == 2
+    print("Threat Test 8 - Joint threats share one defence, not two: PASS")
+
+
+def create_fork_board():
+    board = create_empty_board()
+    for k in range(3, 6):
+        board[10][k] = Color.BLACK
+        board[k][10] = Color.BLACK
+    for k in range(3, 6):
+        board[15][k] = Color.WHITE
+    return board
+
+
+def test_fork_creates_four_threats():
+    board = create_fork_board()
+    assert count_move_threats(board, 10, 6, 6, 10, Color.BLACK) == 4
+    print("Threat Test 9 - A perpendicular fork is four threats: PASS")
+
+
+def test_double_threat_pair_outranks_higher_sum_pair():
+    board = create_empty_board()
+    for k in range(3, 6):
+        board[10][k] = Color.BLACK
+        board[k][10] = Color.BLACK
+        board[15][k] = Color.WHITE
+    board[10][2] = Color.WHITE
+    board[2][10] = Color.WHITE
+    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES, Color.BLACK)
+    pairs_in_order = [pair_set(move) for move in candidates]
+    fork = frozenset({(10, 6), (6, 10)})
+    quiet = frozenset({(15, 2), (15, 6)})
+    assert pairs_in_order.index(fork) < pairs_in_order.index(quiet)
+    print("Threat Test 10 - A double-threat pair outranks a higher-sum pair: PASS")
 
 
 # ============================================================
@@ -451,7 +622,7 @@ def color_can_complete_six(board, color):
 
 def test_candidates_include_completion_pairs():
     board = create_threat_board(4)
-    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES)
+    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES, Color.BLACK)
     pairs = {frozenset(placed_cells(move)) for move in candidates}
     assert frozenset({(9, 13), (9, 14)}) in pairs
     print("Search Test 10 - Two-stone completion pairs are generated: PASS")
@@ -476,7 +647,7 @@ def test_search_blocks_two_stone_threat():
 def test_search_and_candidates_do_not_mutate_board():
     board = create_threat_board(4)
     snapshot = copy_board(board)
-    generate_candidate_moves(board, MAX_CANDIDATE_MOVES)
+    generate_candidate_moves(board, MAX_CANDIDATE_MOVES, Color.BLACK)
     assert board == snapshot
     search_min_max(board, Color.BLACK, 2, create_move_at(9, 13), SearchStats())
     assert board == snapshot
@@ -767,6 +938,25 @@ if __name__ == "__main__":
     test_dead_set_is_worthless()
     test_diagonal_equals_horizontal()
     test_longer_set_worth_more()
+    test_spacious_set_outvalues_cramped_set()
+    test_window_factor_caps()
+
+    print("\n========== CANDIDATE RANKING TESTS ==========\n")
+    test_colinear_pair_ranks_below_split_pair()
+    test_colinear_correction_requires_clear_gap()
+    test_colinear_correction_stops_at_twelve()
+
+    print("\n========== THREAT TESTS ==========\n")
+    test_live_five_open_is_two_threats()
+    test_live_five_blocked_is_one_threat()
+    test_open_live_four_is_two_threats()
+    test_dead_live_four_is_one_threat()
+    test_completed_six_is_threat_win()
+    test_overlapping_windows_count_once()
+    test_quiet_slice_has_no_threats()
+    test_joint_threats_share_defence()
+    test_fork_creates_four_threats()
+    test_double_threat_pair_outranks_higher_sum_pair()
 
     print("\n========== MIN-MAX SEARCH TESTS ==========\n")
     test_search_finds_winning_move()
