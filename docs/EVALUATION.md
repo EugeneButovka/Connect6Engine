@@ -641,6 +641,26 @@ two-window live-4 (free == 3) -> 1000 x 2 = 2000
 spacious live-4 (free >= 4)  -> 1000 x 3 = 3000
 ```
 
+**Worked example.** The same black 4-run at (10,3)-(10,6) under three liberties — row 10
+printed (`X` black, `O` white, `.` empty); the 36 single-points on the other three axes are
+identical in all three boards:
+
+```
+ y:   1  2  3  4  5  6  7  8  9 10 11
+      .  O  X  X  X  X  .  .  O  .  .      cramped     free = 2    surplus = 0        ->  1000 x 1 = 1000
+      .  O  X  X  X  X  .  .  .  O  .      two-window  free = 3    surplus = 1        ->  1000 x 2 = 2000
+      .  .  X  X  X  X  .  .  .  .  .      spacious    free >= 4   surplus = 2 (cap)  ->  1000 x 3 = 3000
+```
+
+- **Cramped** — White at (10,2) and (10,9): one defender stone at (10,7) or (10,8) kills the run; the reply's second stone stays free for offence.
+- **Two-window** — White at (10,2) and (10,10): (10,7) or (10,8) still kills it, but a far stone at (10,9) no longer does — the six survives as a cramped 1000.
+- **Spacious** — open board: no single stone makes the set dead; only the entire two-stone reply, both ends at once, kills it.
+
+The same four stones, three prices: section 2's flat tier paid 1000 for all of them. The
+bookends are the tactically real cases — a cramped live-4 dies to half a reply, a spacious
+one absorbs a whole move — and the cramped < spacious ordering is exactly what Eval Test 11
+pins (`test_spacious_set_outvalues_cramped_set`).
+
 Both scoring sites apply it — the leaf evaluator `_score_living_sets` and the generator's
 `_score_position` — so the "one language" property of section 6.3 survives; the two sites
 measure `free` with different walk caps, but both surpluses cap at the same factor.
