@@ -4,6 +4,9 @@ import select
 import subprocess
 import sys
 from contextlib import redirect_stdout
+from pathlib import Path
+
+os.environ["WEIGHTS_FILE"] = str(Path(__file__).resolve().parents[1] / "tuning" / "default.json")
 
 from connect6.board import init_board, _is_board_full, _is_win_by_move, check_game_end, copy_board, opponent, make_move
 from connect6.game_engine import GameEngine

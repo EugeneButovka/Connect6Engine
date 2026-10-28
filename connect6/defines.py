@@ -1,5 +1,8 @@
+import json
+import os
 from dataclasses import dataclass
 from enum import Enum, IntEnum
+from pathlib import Path
 from typing import Final
 
 GRID_NUM: Final = 21  # Size of the board array: 19x19 cells plus a border ring.
@@ -24,32 +27,62 @@ BORDER: Final = 3
 Direction = tuple[int, int]
 DIRECTIONS: Final[tuple[Direction, ...]] = ((1, 0), (0, 1), (1, 1), (1, -1))
 
-# Value of a living set of stones, named by tier. SetWeight names the tiers;
+# Evaluation weights, selected once at import: the file named by the
+# WEIGHTS_FILE environment variable (a missing explicit path is an error),
+# else tuning/winner.json (the tuned champion), else the hand-tuned
+# tuning/default.json — which is mandatory in every case: it is the single
+# source of the hand-tuned scale, the tuner's baseline and the test suite's
+# pinned configuration.
+WEIGHTS_FILE_ENV: Final = "WEIGHTS_FILE"
+_TUNING_DIR: Final = Path(__file__).resolve().parent.parent / "tuning"
+DEFAULT_WEIGHTS_FILE: Final = _TUNING_DIR / "default.json"
+WINNER_WEIGHTS_FILE: Final = _TUNING_DIR / "winner.json"
+if not DEFAULT_WEIGHTS_FILE.is_file():
+    raise RuntimeError(f"missing weights file: {DEFAULT_WEIGHTS_FILE}")
+_configured = os.environ.get(WEIGHTS_FILE_ENV)
+_source = Path(_configured) if _configured else WINNER_WEIGHTS_FILE
+if not _source.is_file():
+    if _configured:
+        raise RuntimeError(f"missing weights file: {_source}")
+    _source = DEFAULT_WEIGHTS_FILE
+_WEIGHTS: Final[dict[str, int]] = json.loads(_source.read_text())
+
+# Value of a living set of stones, named by tier. SetWeight names the tiers —
+# the four tunable ones read from the weights file, LIVE_FIVE pinned at 10000
+# to keep the terminal scores and the completion-pair threshold exact;
 # LIVE_WEIGHTS is what the search hot paths index by run length, holding plain
 # ints — enum members in that table would slow down the inner loops.
 class SetWeight(IntEnum):
-    SINGLE = 1
-    PAIR = 10
-    TRIPLE = 100
-    LIVE_FOUR = 1000
+    SINGLE = int(_WEIGHTS["single"])
+    PAIR = int(_WEIGHTS["pair"])
+    TRIPLE = int(_WEIGHTS["triple"])
+    LIVE_FOUR = int(_WEIGHTS["four"])
     LIVE_FIVE = 10000
 
 
-LIVE_WEIGHTS: Final[tuple[int, ...]] = (
-    0,
-    int(SetWeight.SINGLE),
-    int(SetWeight.PAIR),
-    int(SetWeight.TRIPLE),
-    int(SetWeight.LIVE_FOUR),
-    int(SetWeight.LIVE_FIVE),
-)
+def weight_tables(data: dict[str, int]) -> tuple[tuple[int, ...], tuple[int, ...], int]:
+    live = (
+        0,
+        int(data["single"]),
+        int(data["pair"]),
+        int(data["triple"]),
+        int(data["four"]),
+        int(SetWeight.LIVE_FIVE),
+    )
+    factor = (1, int(data["factor_two"]), int(data["factor_many"]))
+    return live, factor, int(data["threat"])
+
+
+_LIVE_TABLE, _FACTOR_TABLE, _THREAT_TABLE = weight_tables(_WEIGHTS)
+
+LIVE_WEIGHTS: Final[tuple[int, ...]] = _LIVE_TABLE
 
 # Space multiplier for living sets, indexed by min(free - (6 - length), 2):
 # the number of extra completable 6-windows beyond the only one. A set that
 # fits in exactly one window is worth the plain tier weight; two windows
 # double it, three or more triple it. Live fives are excluded: one open end
 # already wins next move, and no living set may reach the terminal scores.
-WINDOW_FACTOR: Final[tuple[int, ...]] = (1, 2, 3)
+WINDOW_FACTOR: Final[tuple[int, ...]] = _FACTOR_TABLE
 
 # Threat vocabulary (thesis: a side has t threats iff the opponent must place
 # t stones to stop it connecting six; the defender places two stones per turn,
@@ -58,7 +91,7 @@ WINDOW_FACTOR: Final[tuple[int, ...]] = (1, 2, 3)
 # to any real count. THREAT_WEIGHT prices one threat into the pair ranking:
 # one forced defender stone is worth one live-4 tier of urgency.
 THREAT_WIN: Final = 7
-THREAT_WEIGHT: Final = int(SetWeight.LIVE_FOUR)
+THREAT_WEIGHT: Final = _THREAT_TABLE
 THREAT_RANK_WIDTH: Final = 10  # Pairs per node re-ranked by threat count (cost gate).
 
 # Lightweight hot-path companions of Position/Move: plain tuples so that

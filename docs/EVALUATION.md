@@ -854,3 +854,169 @@ Reading it:
 
 The full suite grew from 52 to 67 tests: 15 new (Candidate Ranking 1-3, Threat 1-10,
 Eval 11-12) plus the reworked Eval Test 8, all registered in `tests/test.py`.
+## 9. Weight tuning — a genetic algorithm experiment
+
+Sections 2 and 8 fixed every weight by argument: the tiers as powers of ten, the window
+factor by window counts, the threat price by one live-4 per forced defender stone. The
+genetic tuner (`tuning/genetic_tuner.py`) replaces argument with measurement: it breeds a
+population of weight configurations initialised around the hand-tuned values, lets the
+individuals compete in real games, and keeps what wins.
+
+### 9.1 Method
+
+An **individual** is an integer weight vector — the genes below. The **population** starts
+as the hand-tuned baseline plus random draws around it (each gene scaled by 0.5-2x). Every
+**generation**, each individual plays every other **in both colors** through the real
+`search_alpha_beta` at the deployment depth — the referee installs each side's weights into
+the evaluation/candidates module globals before every search, so the games are ordinary
+engine games. **Fitness** is win = 1, draw = 0.5 per game. The next generation keeps the top
+2 individuals unchanged (**elitism**), breeds the rest from the top half by **uniform
+crossover** (each gene from either parent) with **multiplicative mutation** (each gene
+independently rescaled by 0.7-1.5x with probability 0.35), and repairs every genome against
+the constraints:
+
+| gene | hand-tuned | range | invariant |
+|---|---|---|---|
+| `single` (tier 1) | 1 | 1-5 | — |
+| `pair` (tier 2) | 10 | 4-40 | >= 3 x single |
+| `triple` (tier 3) | 100 | 30-300 | >= 3 x pair |
+| `four` (tier 4) | 1000 | 300-2500 | >= 3 x triple |
+| `factor_two` | 2 | 1-4 | < factor_many |
+| `factor_many` | 3 | 2-6 | x four < 10000 |
+| `threat` (`THREAT_WEIGHT`) | 1000 | 250-4000 | — |
+| live-5 tier | 10000 | pinned | terminal scores (section 1) and the completion-pair threshold stay exact |
+
+The dominance cascade (`>= 3 x` the tier below) preserves section 2's invariant — one set
+of a tier still beats three spacious sets of the tier below. The live-5 tier is pinned so a
+spacious live-4 can never reach the terminal band, and every cell that completes a live-5
+still crosses the completion-pair scan threshold (`SetWeight.LIVE_FIVE` in candidates.py).
+Search and the seeded RNG are both deterministic, so every run is exactly reproducible and
+every measurement has zero variance.
+
+### 9.2 Measurements
+
+Two runs at the deployment depth (3), identical settings, different seeds; plus an earlier
+depth-2 pilot. Population 6, 6 generations, 60-ply cap per game, 182 games per run, ~15 min
+per run (both runs executed in parallel). Configs are written
+`single-pair-triple-four | factor_two-factor_many | threat`; the pinned live-5 tier is
+omitted. Champions were archived to `tuning/best_weights_d3_seed42.json` and
+`..._seed7.json`; the strongest is copied to `tuning/winner.json`, which the engine reads
+at import (the `WEIGHTS_FILE` environment variable, defaulting to that file, with
+`tuning/default.json` as fallback), while `tuning/default.json` is the single source of
+the hand-tuned configuration: the tuner starts from it as its baseline, and the test
+suite pins it via the same variable. `tuning/run_experiment.py` repeats this entire
+section from one command — reruns reproduced every number below exactly.
+
+**Seed 42, per generation** (fitness out of 10 games; `baseline` = the hand-tuned
+configuration's own round-robin score while it survived selection):
+
+| gen | best | median | baseline | decisive | time | generation winner |
+|---|---|---|---|---|---|---|
+| 1 | 6.5 | 5.0 | 3.0 | 28/30 | 179 s | `1-11-54-828 \| 1-2 \| 798` |
+| 2 | 7.5 | 5.0 | — | 26/30 | 192 s | same (elite) |
+| 3 | 5.0 | 5.0 | — | 30/30 | 140 s | same (elite) |
+| 4 | 5.0 | 5.0 | — | 30/30 | 95 s | same (elite) |
+| 5 | 5.0 | 5.0 | — | 30/30 | 95 s | same (elite) |
+| 6 | 7.0 | 6.0 | — | 30/30 | 133 s | `1-13-83-1384 \| 1-2 \| 1709` |
+
+**Seed 7, per generation:**
+
+| gen | best | median | baseline | decisive | time | generation winner |
+|---|---|---|---|---|---|---|
+| 1 | 10.0 | 5.0 | 6.0 | 30/30 | 206 s | `1-18-93-716 \| 1-3 \| 1724` |
+| 2 | 9.0 | 4.0 | 4.0 | 30/30 | 209 s | same (elite) |
+| 3 | 6.0 | 6.0 | — | 30/30 | 120 s | same (elite) |
+| 4 | 5.0 | 5.0 | — | 30/30 | 96 s | same (elite) |
+| 5 | 6.0 | 6.0 | — | 30/30 | 94 s | same (elite) |
+| 6 | 6.0 | 6.0 | — | 30/30 | 102 s | same (elite) |
+
+**Head-to-head at depth 3** — deterministic games, so one game per pairing is the complete
+measurement. The controls separate weight effects from color effects:
+
+| pairing | outcome |
+|---|---|
+| seed-42 champion (fitness 7.5) as black vs baseline | **win**, ply 40 |
+| seed-42 champion as white vs baseline | **win**, ply 17 |
+| seed-7 champion (fitness 10.0) as black vs baseline | **win**, ply 36 |
+| seed-7 champion as white vs baseline | **win**, ply 17 |
+| control: baseline vs baseline | black wins, ply 38 |
+| control: seed-42 champion vs seed-7 champion | white wins, ply 15 (both colors) |
+| depth-2 pilot: pilot champion vs baseline | split 1-1 (win as black ply 22, loss as white ply 22) |
+
+**Move-level verification.** The two champions — whose genes differ everywhere (threat 798
+vs 1724, tiers 11/54/828 vs 18/93/716, factor 1-2 vs 1-3) — play *byte-identical games*
+against the baseline as black: 17 moves each, white wins. The common line agrees with the
+baseline's own mirror game until white's 4th move (ply 7: `LLJH` where baseline-white plays
+`HHJH`), and after that single divergence the finish is threat-forced — the final 10 moves
+are identical for both champions regardless of weights. A third random draw (the
+calibration probe, `threat=538`) also beat the baseline in both colors, as white again at
+ply 17.
+
+### 9.3 Observations
+
+- **The hand-tuned point is not a local optimum.** In the first round-robins the baseline
+  scored 3.0 and 6.0 of 10 while random neighbours scored 5.0-10.0; the seed-7 champion
+  swept 10/10.
+- **Convergent genes.** Every independent winner — both champions and the probe — set
+  `factor_two = 1`, neutralising the 8.1 middle multiplier (a two-window set prices the
+  same as a cramped one); all devalued the triple tier (54-93 vs 100); all kept
+  `single = 1`. `threat` and `four` scattered (538-1724, 716-1918) — the landscape is flat
+  along those axes at this depth.
+- **The Red Queen effect.** Fitness is population-relative: the seed-42 champion scored
+  6.5, then 7.5, then 5.0 against progressively stronger populations; the baseline slid
+  6.0 to 4.0 before selection dropped it in seed 7. Only the best-ever tracking is
+  comparable across generations.
+- **Forcing lines are weight-invariant.** `THREAT_WIN` pairs outrank every weighted
+  candidate by construction, so once a forced win exists the weights stop mattering —
+  identical endings from 3x-different threat weights. Weights steer the quiet game and the
+  *entry* into forcing lines; the champions differ from the baseline by exactly one such
+  entry move.
+- **Depth relativity.** The depth-2 pilot champion split 1-1 with the baseline (it could
+  not refute the opening as white) while both depth-3 champions won both colors; strength
+  conclusions are protocol-relative.
+- **Color asymmetry between equals is itself weight-dependent.** The baseline mirror ends
+  in a black win (ply 38); the champion mirror ends in a white win (ply 15). The refutation
+  of the center opening is available in the position — whether a configuration finds it
+  depends on its weights.
+- **Cost.** ~5.6 s per depth-3 game (population 6: ~3 min per generation); depth-2 games
+  run ~0.7-1.6 s. A depth-4 validation was attempted and abandoned on runtime: ~3 s per
+  move makes a 60-ply game minutes long and a population hours.
+
+### 9.4 Results and conclusions
+
+**Results.** Both depth-3 champions beat the hand-tuned baseline in both colors, with the
+controls and move logs confirming the wins are weight-driven; the seed-7 champion
+additionally swept its first round-robin 10/10 against the baseline and four random
+neighbours.
+
+| champion | fitness | genes |
+|---|---|---|
+| seed-42, generation 2 | 7.5 | `1-11-54-828-10000 \| 1-2 \| 798` |
+| seed-7, generation 1 | 10.0 | `1-18-93-716-10000 \| 1-3 \| 1724` |
+
+**Conclusions.**
+
+1. The genetic protocol works and finds measurably stronger weight vectors next door to
+   the hand-tuned one: the baseline is beatable from both colors, by more than one
+   independent configuration, at the deployment depth.
+2. The sharpest genetic signal indicts one 8.1 design choice: every winner neutralised the
+   two-window multiplier (`factor_two = 1`) and devalued the triple tier — at depth-3
+   self-play, moderately spacious sets were *overpriced* by the hand design. The win
+   mechanism itself (threat forcing) is weight-free, so `THREAT_WEIGHT` moved freely
+   (538-1724) without changing a single forced line.
+3. The champions are **not written into the engine** — the hand-tuned baseline lives in
+   exactly one place, `tuning/default.json` (the live-5 tier stays a pinned literal in
+   `defines.py` for the terminal scores and the completion-pair threshold). The weights
+   are selected once, at import: `defines.py` reads the JSON file named by the
+   `WEIGHTS_FILE` environment variable — defaulting to `tuning/winner.json` (the
+   strongest champion) for actual play, falling back to the hand-tuned file when it is
+   absent — while the test suite sets the same variable to `tuning/default.json` before
+   importing the engine, so every assertion in sections 2-8 keeps measuring the
+   hand-tuned values. The genetic machinery itself (the `Weights` vector, gene ranges,
+   constraint repair) lives in `tuning/genetic_tuner.py`, outside the engine package,
+   and starts from the same hand-tuned file as its baseline. A depth-4 validation and a
+   longer ply cap remain the caveats before trusting the champion beyond this protocol.
+4. Scope limits, stated plainly: one protocol (center opening, depth 3, 60-ply cap),
+   populations of 6, two seeds, deterministic games. Fitness is a fixed function of the
+   genome — zero-variance and exactly reproducible, but it quantifies dominance over that
+   population and protocol, not absolute strength against the field.
