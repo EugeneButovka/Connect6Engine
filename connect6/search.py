@@ -29,19 +29,15 @@ def search_alpha_beta(board: Board, color: Color, depth: int, pre_move: Move, st
 
 
 def search_alpha_beta_with_quiescence(board: Board, color: Color, depth: int, pre_move: Move, stats: SearchStats) -> SearchResult:
+    return _search(board, color, depth, pre_move, stats, prune=True, enhanced=True)
+
+
+def _search(board: Board, color: Color, depth: int, pre_move: Move, stats: SearchStats, prune: bool, enhanced: bool = False) -> SearchResult:
     working_board = copy_board(board)
     if is_board_empty(working_board):
         center = Move((Position(10, 10), Position(10, 10)))
         return SearchResult(center, 0)
-    return _alpha_beta_enhanced(depth, working_board, color, pre_move, stats, MININT, MAXINT, 0, 0)
-
-
-def _search(board: Board, color: Color, depth: int, pre_move: Move, stats: SearchStats, prune: bool) -> SearchResult:
-    working_board = copy_board(board)
-    if is_board_empty(working_board):
-        center = Move((Position(10, 10), Position(10, 10)))
-        return SearchResult(center, 0)
-    return _alpha_beta(depth, working_board, color, pre_move, stats, MININT, MAXINT, prune)
+    return _alpha_beta(depth, working_board, color, pre_move, stats, MININT, MAXINT, prune, enhanced)
 
 
 def _alpha_beta(
@@ -53,7 +49,12 @@ def _alpha_beta(
     alpha: int,
     beta: int,
     prune: bool,
+    enhanced: bool = False,
+    ply: int = 0,
+    incoming: int = 0,
 ) -> SearchResult:
+    if enhanced and depth <= 0:
+        return _quiescence(board, color, pre_move, stats, alpha, beta, incoming, QUIESCENCE_DEPTH)
     stats.node_count += 1
     score = evaluate(board, pre_move)
     if score == MAXINT or score == MININT:
@@ -61,95 +62,72 @@ def _alpha_beta(
     if depth <= 0:
         return SearchResult(pre_move, score)
 
-    candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES, color)
+    threats: list[int] = []
+    if enhanced:
+        width = FORWARD_WIDTHS[min(ply, len(FORWARD_WIDTHS) - 1)]
+        candidates, threats = generate_scored_candidate_moves(board, width, color)
+    else:
+        candidates = generate_candidate_moves(board, MAX_CANDIDATE_MOVES, color)
     if len(candidates) == 0:
         return SearchResult(pre_move, score)
 
     maximizing = color == Color.BLACK
     best_score = MININT if maximizing else MAXINT
     best_move = candidates[0]
-    for candidate in candidates:
+    for index, candidate in enumerate(candidates):
+        child_incoming = threats[index] if enhanced else 0
         make_move(board, candidate, color)
-        child = _alpha_beta(depth - 1, board, opponent(color), candidate, stats, alpha, beta, prune)
-        unmake_move(board, candidate)
-        if maximizing:
-            if child.score > best_score:
-                best_score = child.score
-                best_move = candidate
-            if prune:
-                if best_score >= beta:
-                    return SearchResult(best_move, best_score)
-                if best_score > alpha:
-                    alpha = best_score
-        else:
-            if child.score < best_score:
-                best_score = child.score
-                best_move = candidate
-            if prune:
-                if best_score <= alpha:
-                    return SearchResult(best_move, best_score)
-                if best_score < beta:
-                    beta = best_score
-    return SearchResult(best_move, best_score)
-
-
-def _alpha_beta_enhanced(
-    depth: int,
-    board: Board,
-    color: Color,
-    pre_move: Move,
-    stats: SearchStats,
-    alpha: int,
-    beta: int,
-    ply: int,
-    incoming: int,
-) -> SearchResult:
-    if depth <= 0:
-        return _quiescence(board, color, pre_move, stats, alpha, beta, incoming, QUIESCENCE_DEPTH)
-    stats.node_count += 1
-    score = evaluate(board, pre_move)
-    if score == MAXINT or score == MININT:
-        return SearchResult(pre_move, score)
-
-    width = FORWARD_WIDTHS[min(ply, len(FORWARD_WIDTHS) - 1)]
-    moves, threats = generate_scored_candidate_moves(board, width, color)
-    if len(moves) == 0:
-        return SearchResult(pre_move, score)
-
-    maximizing = color == Color.BLACK
-    best_score = MININT if maximizing else MAXINT
-    best_move = moves[0]
-    for move, threat in zip(moves, threats):
-        make_move(board, move, color)
-        child = _alpha_beta_enhanced(
+        child = _alpha_beta(
             depth - 1,
             board,
             opponent(color),
-            move,
+            candidate,
             stats,
             alpha,
             beta,
+            prune,
+            enhanced,
             ply + 1,
-            threat if threat > 0 else 0,
+            child_incoming if child_incoming > 0 else 0,
         )
-        unmake_move(board, move)
-        if maximizing:
-            if child.score > best_score:
-                best_score = child.score
-                best_move = move
+        unmake_move(board, candidate)
+        best_score, best_move, alpha, beta, cutoff = _advance(
+            maximizing, child.score, candidate, best_score, best_move, alpha, beta, prune
+        )
+        if cutoff:
+            return SearchResult(best_move, best_score)
+    return SearchResult(best_move, best_score)
+
+
+def _advance(
+    maximizing: bool,
+    child_score: int,
+    candidate: Move,
+    best_score: int,
+    best_move: Move,
+    alpha: int,
+    beta: int,
+    prune: bool,
+) -> tuple[int, Move, int, int, bool]:
+    if maximizing:
+        if child_score > best_score:
+            best_score = child_score
+            best_move = candidate
+        if prune:
             if best_score >= beta:
-                return SearchResult(best_move, best_score)
+                return best_score, best_move, alpha, beta, True
             if best_score > alpha:
                 alpha = best_score
-        else:
-            if child.score < best_score:
-                best_score = child.score
-                best_move = move
+    else:
+        if child_score < best_score:
+            best_score = child_score
+            best_move = candidate
+        if prune:
             if best_score <= alpha:
-                return SearchResult(best_move, best_score)
+                return best_score, best_move, alpha, beta, True
             if best_score < beta:
                 beta = best_score
-    return SearchResult(best_move, best_score)
+    return best_score, best_move, alpha, beta, False
 
 
 def _quiescence(
@@ -198,7 +176,7 @@ def _quiescence(
         if not maximizing and stand < beta:
             beta = stand
 
-    for move, threat in pool[:QUIESCENCE_WIDTH]:
+    for move, threat in pool:
         make_move(board, move, color)
         child = _quiescence(
             board,
@@ -211,20 +189,9 @@ def _quiescence(
             qdepth - 1,
         )
         unmake_move(board, move)
-        if maximizing:
-            if child.score > best_score:
-                best_score = child.score
-                best_move = move
-            if best_score >= beta:
-                return SearchResult(best_move, best_score)
-            if best_score > alpha:
-                alpha = best_score
-        else:
-            if child.score < best_score:
-                best_score = child.score
-                best_move = move
-            if best_score <= alpha:
-                return SearchResult(best_move, best_score)
-            if best_score < beta:
-                beta = best_score
+        best_score, best_move, alpha, beta, cutoff = _advance(
+            maximizing, child.score, move, best_score, best_move, alpha, beta, True
+        )
+        if cutoff:
+            return SearchResult(best_move, best_score)
     return SearchResult(best_move, best_score)

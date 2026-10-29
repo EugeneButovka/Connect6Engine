@@ -5,19 +5,14 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+import harness
 from connect6 import candidates as candidates_module
 from connect6 import evaluation as evaluation_module
-from connect6.board import check_game_end, init_board, make_move
 from connect6.defines import (
-    GRID_NUM,
     Color,
-    GameResult,
-    SearchStats,
     SetWeight,
     weight_tables,
 )
-from connect6.protocol import move2msg, msg2move
-from connect6.search import search_alpha_beta
 
 LIVE_FIVE: int = int(SetWeight.LIVE_FIVE)
 
@@ -104,22 +99,15 @@ def play_game(
     max_plies: int,
     moves: list[str] | None = None,
 ) -> tuple[Color | None, int]:
-    board = [[0] * GRID_NUM for _ in range(GRID_NUM)]
-    init_board(board)
-    pre_move = msg2move("JJ")
-    make_move(board, pre_move, Color.BLACK)
-    for ply in range(max_plies):
-        mover = Color.WHITE if ply % 2 == 0 else Color.BLACK
-        apply_weights(white if mover is Color.WHITE else black)
-        result = search_alpha_beta(board, mover, depth, pre_move, SearchStats())
-        make_move(board, result.move, mover)
-        pre_move = result.move
-        if moves is not None:
-            moves.append(move2msg(result.move))
-        end = check_game_end(board, pre_move)
-        if end is not None:
-            return (mover if end is GameResult.WIN else None), ply + 1
-    return None, max_plies
+    record = harness.play_game(
+        harness.weights_player(black),
+        harness.weights_player(white),
+        depth,
+        max_plies,
+    )
+    if moves is not None:
+        moves.extend(record.moves)
+    return record.winner, record.plies
 
 
 def round_robin(

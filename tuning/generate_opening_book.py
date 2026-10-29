@@ -1,7 +1,8 @@
 import argparse
 import json
-import os
 from pathlib import Path
+
+import harness
 
 DEFAULT_OPENINGS = ["IIKK", "JIKJ", "JKJI", "IKKJ", "LLHH"]
 
@@ -19,18 +20,17 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    os.environ["WEIGHTS_FILE"] = str(Path(args.weights).resolve())
+    harness.pin_weights(args.weights)
 
-    from connect6.board import check_game_end, init_board, make_move
-    from connect6.defines import GRID_NUM, Color, SearchStats
+    from connect6.board import check_game_end, make_move
+    from connect6.defines import Color, SearchStats
     from connect6.opening_book import position_key
     from connect6.protocol import move2msg, msg2move
     from connect6.search import search_alpha_beta_with_quiescence
 
     def play_line(seed: str, record_first_reply: bool) -> dict[str, str]:
-        board = [[0] * GRID_NUM for _ in range(GRID_NUM)]
-        init_board(board)
-        first = msg2move("JJ")
+        board = harness.empty_board()
+        first = harness.center()
         make_move(board, first, Color.BLACK)
         book: dict[str, str] = {"": "JJ"}
         pre_move = first

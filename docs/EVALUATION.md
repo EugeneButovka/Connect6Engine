@@ -1033,7 +1033,8 @@ pruning), the opening book (`connect6/opening_book.py`), and their support const
 `defines.py`. The plain `search_alpha_beta` and `search_min_max` are untouched: they remain the
 spec baselines, the §5-§8 measurements, and the GA referee of section 9. The engine's
 `_search_and_play` now calls the enhanced method. Everything in this section is reproduced by
-`tuning/measure_search.py` (positions, verdict tables, head-to-head referee) and
+`benchmarks/perf_search_v4_enhanced.ipynb` (positions, verdict tables, head-to-head referee —
+every documented number asserted in the notebook) and
 `tuning/generate_opening_book.py` (the book); reruns are exact — the searches are deterministic.
 
 ### 10.1 Method
@@ -1248,3 +1249,268 @@ depth it is the highest-burden, near-zero-gain item on the list. The case, quant
    node savings, hash upkeep in the same order, three silent-failure bug classes, and a
    symmetric prefix the book already answers. Highest burden, near-zero gain at the
    deployment depth: declined, with the numbers on record.
+
+## 11. The version timeline — a final comparison
+
+The project's chapters are four engine versions, each one step of the timeline:
+
+- **v1 — naive min-max**, hand-tuned weights (sections 2-5, the documented baseline);
+- **v2 — alpha-beta** (section 6), same weights: pure algorithmic speed, provably identical play;
+- **v3 — alpha-beta + tuned weights** (section 9): the GA champion in place of the hand-tuned set;
+- **v4 — the deployed engine**: tuned weights *plus* quiescence, forward pruning and the opening book (section 10).
+
+`benchmarks/perf_versions_v1_v4.ipynb` measures all four at the deployment depth (3): who wins —
+every adjacent pairing of the timeline plus the full journey v1-vs-v4, one deterministic game
+per color assignment through the section-9 protocol (center opening, 60-ply cap, weights
+installed per search by the GA referee's own `apply_weights`) — and what it costs — the
+section-10 positions plus the opening reply, where the book answers instead of a search.
+Reruns reproduce every number exactly.
+
+### 11.1 Who is winning
+
+| black | white | outcome | winner | ply |
+|---|---|---|---|---|
+| v1 min-max | v2 alpha-beta | black wins | **v1** | 38 |
+| v2 alpha-beta | v1 min-max | black wins | **v2** | 38 |
+| v2 alpha-beta | v3 tuned weights | white wins | **v3** | 17 |
+| v3 tuned weights | v2 alpha-beta | black wins | **v3** | 36 |
+| v3 tuned weights | v4 deployed | white wins | **v4** | 19 |
+| v4 deployed | v3 tuned weights | black wins | **v4** | 26 |
+| v1 min-max | v4 deployed | white wins | **v4** | 19 |
+| v4 deployed | v1 min-max | black wins | **v4** | 26 |
+
+Reading it as a knockout ladder: **v1 and v2 are the same player** — the pairing splits 1-1
+and both games are literally the section-9 baseline mirror (identical moves, ply 38, black
+wins): alpha-beta changes the price of a move, never the move. **v3 beats v2 in both
+colors** — weights alone, reproducing section 9's champion head-to-head down to the plies
+(17 and 36). **v4 beats v3 in both colors** — section 10's enhancement carries to full
+games, not just verdict tables. **v4 beats v1 in both colors**, and its games against v1 are
+move-for-move identical to its games against v3: once v4's forcing lines take over, the
+opponent's weights stop changing its choices — section 9.3's weight-invariance, observed
+again from the other side. The lone regularity that survives every unequal pairing: no
+version ever lost to an earlier one.
+
+### 11.2 What it costs
+
+One search per position per version, one row per measurement, deterministic: nodes, wall
+time, and the fixed black-perspective root score. `book` marks the rows the opening book
+answered without a search.
+
+At the deployment depth 3:
+
+| position | version | nodes | ms | score |
+|---|---|---|---|---|
+| opening reply, white | v1 min-max | 27,931 | 1,423 | -303 |
+| | v2 alpha-beta | 2,830 | 216 | -303 |
+| | v3 tuned weights | 2,918 | 220 | -282 |
+| | v4 deployed | 0 | 0 | **book** |
+| opening scatter, white | v1 min-max | 27,931 | 1,778 | -510 |
+| | v2 alpha-beta | 1,182 | 114 | -510 |
+| | v3 tuned weights | 1,593 | 140 | -436 |
+| | v4 deployed | 1,668 | 322 | -386 |
+| midgame, white | v1 min-max | 27,931 | 1,927 | -3,097 |
+| | v2 alpha-beta | 1,390 | 196 | -3,097 |
+| | v3 tuned weights | 1,425 | 190 | -2,342 |
+| | v4 deployed | 1,458 | 489 | -703 |
+| fork attack, black | v1 min-max | 27,931 | 2,021 | **20,000** |
+| | v2 alpha-beta | 78 | 19 | **20,000** |
+| | v3 tuned weights | 78 | 19 | **20,000** |
+| | v4 deployed | 78 | 26 | **20,000** |
+| fork completed, white | v1 min-max | 24,631 | 2,009 | **20,000** |
+| | v2 alpha-beta | 351 | 45 | **20,000** |
+| | v3 tuned weights | 347 | 45 | **20,000** |
+| | v4 deployed | 207 | 111 | **20,000** |
+| five-run attack, white | v1 min-max | 14,461 | 982 | 1,577 |
+| | v2 alpha-beta | 249 | 36 | 1,577 |
+| | v3 tuned weights | 249 | 37 | 1,536 |
+| | v4 deployed | 103 | 34 | **20,000** |
+
+At depth 4 (min-max omitted — its full d4 trees are minutes long):
+
+| position | version | nodes | ms | score |
+|---|---|---|---|---|
+| opening reply, white | v2 alpha-beta | 24,533 | 2,599 | +303 |
+| | v3 tuned weights | 25,469 | 2,645 | +282 |
+| | v4 deployed | 0 | 0 | **book** |
+| opening scatter, white | v2 alpha-beta | 9,150 | 1,293 | -66 |
+| | v3 tuned weights | 15,964 | 2,310 | -40 |
+| | v4 deployed | 7,581 | 2,388 | -38 |
+| midgame, white | v2 alpha-beta | 11,640 | 1,888 | -301 |
+| | v3 tuned weights | 11,799 | 1,958 | -305 |
+| | v4 deployed | 3,782 | 1,491 | -617 |
+| fork attack, black | v2 alpha-beta | 350 | 45 | **20,000** |
+| | v3 tuned weights | 347 | 45 | **20,000** |
+| | v4 deployed | 179 | 66 | **20,000** |
+| fork completed, white | v2 alpha-beta | 577 | 180 | **20,000** |
+| | v3 tuned weights | 573 | 178 | **20,000** |
+| | v4 deployed | 349 | 113 | **20,000** |
+| five-run attack, white | v2 alpha-beta | 1,616 | 192 | 11,613 |
+| | v3 tuned weights | 1,616 | 192 | 11,596 |
+| | v4 deployed | 110 | 31 | **20,000** |
+
+### 11.3 Observations
+
+- **v1 and v2 agree everywhere — scores and moves — on every position at both depths.**
+  The equivalence the test suite pins per-position shows up as the two versions' rows
+  agreeing line by line; what alpha-beta buys is the node count: 10x on the opening reply,
+  24x on the scatter, 358x on the fork attack, where the cutoff chain fires almost
+  immediately. The min-max rows are position-blind — 27,931 nodes whenever the candidate
+  pool is full — because a search with no cutoffs prices the whole tree whatever the
+  position; that is also why they have no depth-4 rows.
+- **The naive engine is wrong where it matters, and slower too.** On the five-run position
+  v1's verdict is 1,577 at depth 3 and (like v2/v3) still wrong at depth 4 — every
+  fixed-depth search short of the truth — while v4 is exact at both depths for ~100 nodes.
+  In the games, v1 spends ~3.1 s per move (523k nodes per game as black); the deployed
+  engine spends ~2.3 s per move — the pruning pays for the quiescence and then some: the
+  final engine is both stronger *and* faster than the first one.
+- **The weights step is visible in the scores, not the moves.** v2 and v3 mostly pick the
+  same moves (`FJII`, `HJBJ`) but price them differently: -510 vs -436, -3,097 vs -2,342 —
+  and the champion converts the pricing into the 2-0 game record. Section 9's gene table
+  explains the mechanism (the devalued triple tier, the neutralised two-window factor).
+- **The opening-reply rows are the whole book story:** the reply costs v3 2,918 nodes /
+  220 ms at depth 3 and 25,469 nodes / 2.6 s at depth 4; v4's book rows answer it in zero —
+  the wire-speed opening of the section-10 engine probe. One book hit per game as white
+  (the only protocol position the book covers); as black the opponents' replies leave the
+  book lines immediately, and the search takes over, as designed.
+- **Parity, once more:** the opening-reply score is -303/-282 at depth 3 and +303/+282 at
+  depth 4 — a perfect sign-flip across the even/odd horizon, the section 5 illusion in a
+  single position. The five-run row is the same story with consequences.
+- **The engine's own cost profile at deployment:** v3 ~0.2 s per quiet move, v4 ~0.5 s on
+  quiet positions and up to ~2.3 s through tactical middlegames — inside GUI-interactive
+  budgets, and section 10's economics hold in full games, not just fixed positions.
+
+### 11.4 Conclusions
+
+1. Each step of the timeline bought exactly what its chapter claimed, and the final
+   benchmark shows the steps composing: **alpha-beta is speed (identical play, 10-358x
+   fewer nodes), the GA weights are strength (2-0), the section-10 optimizations are
+   strength and truth (2-0, three verdict corrections, instant openings).**
+2. **v4 dominates v1** — the deployed engine against the naive baseline: 2-0 in games,
+   faster per move at the same depth (2.3 vs 3.1 s), and correct on the tactical verdicts
+   the naive engine gets wrong at every measured depth.
+3. The regularities across chapters are consistent: deterministic protocols give complete
+   records, not samples; strength conclusions remain protocol-relative (center opening,
+   depth 3, 60-ply cap); and every equal-strength pairing still leans black.
+
+## 12. Deliverables — the reusable inventory
+
+The evaluation built more than an engine: it built the instruments that measured it. This
+closing chapter inventories the functionality, developed for the chapters above, that
+another project — or the next iteration of this one — can pick up and reuse. Every item
+points at the artefact that carries it; none of it needs to be taken on trust, only rerun.
+
+### 12.1 The engine as a library
+
+`connect6/` is importable as a package whose only import-time side effect is reading the
+weight file named by `WEIGHTS_FILE` (the champion, with the hand-tuned fallback). What the
+package exports:
+
+- **Board and rules** — `init_board`/`copy_board`, `make_move`, and `check_game_end` with
+  the `measure_line` walk: win/draw detection that never depends on the search above it.
+- **The text protocol** — `msg2move`/`move2msg` (with the x-axis mirror), board printing,
+  and `tia-engine.log` logging. The engine is a drop-in opponent for any driver, from the
+  frozen executable to an interactive referee.
+- **Externalised weights** — the evaluator and candidate tables are plain module
+  attributes, and `apply_weights` installs a new vector at runtime with no process restart.
+  This is what makes the GA and the version benchmark possible at all.
+- **One search loop, three searches** — min-max, alpha-beta and the enhanced variant share
+  the single `_alpha_beta` loop behind two flags (`prune`, `enhanced`): a new variant is a
+  flag away, not a fork.
+- **The opening book**, with parity position keys and silent fallback (12.4).
+
+The reuse pattern is the one this repository uses everywhere — the test suite, the tuning
+scripts, the notebooks: pin `WEIGHTS_FILE`/`BOOK_FILE`, import, call.
+
+### 12.2 The tuning harness
+
+`tuning/harness.py` is the scaffolding the experiments of sections 9-11 stand on, factored
+out so the next experiment starts at the measurement instead of the plumbing:
+
+- `pin_weights` — sets `WEIGHTS_FILE` before the engine is imported; the weights-are-read-once
+  hazard is solved exactly once, at the right place.
+- `empty_board`, `at`, `center` — board construction and the fixed center opening.
+- `documented_positions` — the six boards behind the section-10/11 tables, built identically
+  on every call.
+- `search_player` and `weights_player` — adapters that turn any search callable or weight
+  vector into the common player interface.
+- `play_game` — the referee: center opening, an optional forced white first reply, a fresh
+  `SearchStats` per move, per-side `Tally` (nodes, ms, moves, book hits — a call that leaves
+  the stats untouched counts as a book hit), and a `GameRecord` with the winner, plies,
+  final board and move log.
+
+A new search idea is measured in a few lines:
+
+```python
+import harness
+from connect6.search import search_alpha_beta_with_quiescence
+
+player = harness.search_player(search_alpha_beta_with_quiescence)
+record = harness.play_game(player, player, depth=3, white_first_reply="IIKK")
+print(record.winner, record.plies, record.black.nodes, record.white.nodes)
+```
+
+The GA referee, the book generator and both measurement notebooks are thin layers over
+this one module.
+
+### 12.3 The genetic weight tuner
+
+`tuning/genetic_tuner.py` is a small, seeded GA for any linear-weight evaluator:
+
+- the `Weights` vector, gene ranges, and repair constraints — tier dominance
+  (`next >= 3 x current`) and the live-5 bound (`factor x four < 10000`) — so no candidate
+  is ever structurally invalid;
+- round-robin self-play fitness through the real search at any depth (wins 1, draws 0.5),
+  crossover and mutation around the surviving elite, seeded and reproducible (section 9);
+- `apply_weights` — live installation of a candidate vector, no restart.
+
+Its public surface (`Weights`, `BASE`, `apply_weights`, `fmt`, `play_game`) is what
+`run_experiment.py` and the harness import; tuning a different evaluator is a matter of
+swapping the gene ranges and the repair bounds.
+
+### 12.4 The opening-book machinery
+
+`connect6/opening_book.py` plus `tuning/generate_opening_book.py`:
+
+- position keys are **stone inventories** (`"10.10.1,9.11.2"` — coordinate, color) with the
+  side to move implied by the parity of the stone count: compact JSON, no side-to-move
+  bookkeeping, and impossible to apply on the wrong mover;
+- recorded entries are validated against the live board (occupied cells reject the entry),
+  and the book **fails silent** — a miss or a bad entry falls back to the search, so a book
+  can never corrupt play, only speed it up (section 10);
+- the generator produces books by self-play, configurable end to end (`--depth`,
+  `--plies`, `--openings`, `--weights`, `--out`) — one command, about a minute.
+
+### 12.5 The benchmark notebooks
+
+`benchmarks/` carries two patterns beyond its results:
+
+- **model-fitted scaling plots** — the depth notebooks estimate the per-node cost from the
+  depth-1 measurement, then draw the theoretical `O(B^depth)` curve (and the ideal
+  `O(B^(depth/2))` guide) through the measured points: the figure is the hypothesis test;
+- **assert-validated measurements** — the section-10/11 notebooks pin weights before
+  importing the engine, print the documented tables, and assert every deterministic field
+  (nodes, scores, moves, game outcomes, book hits) against this document. Executing the
+  notebook *is* the validation; the stored outputs are executable documentation of the
+  results.
+
+Headless execution needs no IDE: `nbclient` with a kernelspec over the project venv reruns
+them from the command line — that is how their stored outputs were produced.
+
+### 12.6 The deterministic test suite
+
+`tests/test.py` — 79 tests over the whole pipeline in pipeline order — contributes two
+patterns worth copying:
+
+- **pin the configuration before import** — `WEIGHTS_FILE`/`BOOK_FILE` are set before the
+  engine is imported, so every assertion measures the documented configuration whatever
+  the ambient environment;
+- **pin the behaviour, not the implementation** — alpha-beta must equal min-max's scores
+  and moves with strictly fewer nodes; quiescence must find the fork win one horizon early
+  and price lost defences at the terminal band; forward pruning must cut depth-4 nodes; the
+  book must reject occupied or invalid entries and fall back to search. The regressions the
+  chapters argued for are executable.
+
+Nothing in this inventory asks to be believed. The suite, the notebooks, the generator and
+the referee are deterministic, and each is its own proof: rerun them, and the numbers come
+back as printed. The deliverable is not this document — it is the set of programs that keep
+this document honest.
