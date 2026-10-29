@@ -7,14 +7,16 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 os.environ["WEIGHTS_FILE"] = str(Path(__file__).resolve().parents[1] / "tuning" / "default.json")
+os.environ["BOOK_FILE"] = str(Path(__file__).resolve().parents[1] / "tuning" / "no_book.json")
 
 from connect6.board import init_board, _is_board_full, _is_win_by_move, check_game_end, copy_board, opponent, make_move
 from connect6.game_engine import GameEngine
 from connect6.protocol import color_to_name, move2msg, msg2move
 from connect6.evaluation import evaluate, _score_living_sets
 from connect6.candidates import generate_candidate_moves, _pair_correction
+from connect6.opening_book import book_move, position_key
 from connect6.threats import count_line_threats, count_move_threats
-from connect6.search import search_alpha_beta, search_min_max
+from connect6.search import search_alpha_beta, search_alpha_beta_with_quiescence, search_min_max
 from connect6.defines import (
     ENGINE_NAME,
     GRID_NUM,
@@ -689,6 +691,166 @@ def test_alpha_beta_visits_fewer_nodes():
     print("Search Test 16 - Alpha-beta visits fewer nodes: PASS")
 
 
+def create_forked_board():
+    board = create_fork_board()
+    board[10][6] = Color.BLACK
+    board[6][10] = Color.BLACK
+    return board
+
+
+def create_quiet_board():
+    board = create_empty_board()
+    board[10][10] = Color.BLACK
+    board[3][3] = Color.BLACK
+    board[10][3] = Color.WHITE
+    board[3][10] = Color.WHITE
+    return board
+
+
+# ============================================================
+# ENHANCED SEARCH TESTS (QUIESCENCE + FORWARD PRUNING)
+# ============================================================
+
+def test_quiescence_finds_win_beyond_horizon():
+    board = create_fork_board()
+    pre_move = create_move_at(15, 5)
+    plain = search_alpha_beta(board, Color.BLACK, 2, pre_move, SearchStats())
+    enhanced = search_alpha_beta_with_quiescence(board, Color.BLACK, 2, pre_move, SearchStats())
+    assert plain.score < MAXINT
+    assert enhanced.score == MAXINT
+    fork = enhanced.move
+    threats = count_move_threats(
+        board,
+        fork.positions[0].x,
+        fork.positions[0].y,
+        fork.positions[1].x,
+        fork.positions[1].y,
+        Color.BLACK,
+    )
+    assert threats >= 3
+    print("Enhanced Search Test 1 - Quiescence finds the fork win one ply past the horizon: PASS")
+
+
+def test_quiescence_prices_hopeless_defence():
+    board = create_forked_board()
+    pre_move = create_move_at(6, 10)
+    plain = search_alpha_beta(board, Color.WHITE, 1, pre_move, SearchStats())
+    enhanced = search_alpha_beta_with_quiescence(board, Color.WHITE, 1, pre_move, SearchStats())
+    assert plain.score < MAXINT
+    assert enhanced.score == MAXINT
+    print("Enhanced Search Test 2 - Quiescence prices a lost defence as a win for the forker: PASS")
+
+
+def test_enhanced_finds_winning_move():
+    board = create_winnable_board()
+    result = search_alpha_beta_with_quiescence(board, Color.BLACK, 2, create_move_at(10, 7), SearchStats())
+    assert result.score == MAXINT
+    assert (10, 8) in placed_cells(result.move)
+    print("Enhanced Search Test 3 - Enhanced search finds the winning move: PASS")
+
+
+def test_enhanced_blocks_opponent_win():
+    board = create_winnable_board()
+    result = search_alpha_beta_with_quiescence(board, Color.WHITE, 2, create_move_at(10, 7), SearchStats())
+    assert result.score == MAXINT
+    assert placed_cells(result.move) == {(10, 8), (10, 2)}
+    print("Enhanced Search Test 4 - Enhanced search blocks both ends and still prices the position lost: PASS")
+
+
+def test_enhanced_blocks_live_four():
+    board = create_threat_board(4)
+    result = search_alpha_beta_with_quiescence(board, Color.BLACK, 2, create_move_at(9, 12), SearchStats())
+    make_move(board, result.move, Color.BLACK)
+    assert not color_can_complete_six(board, Color.WHITE)
+    print("Enhanced Search Test 5 - Enhanced search blocks a live four: PASS")
+
+
+def test_enhanced_blocks_live_five():
+    board = create_threat_board(5)
+    result = search_alpha_beta_with_quiescence(board, Color.BLACK, 2, create_move_at(9, 13), SearchStats())
+    make_move(board, result.move, Color.BLACK)
+    assert not color_can_complete_six(board, Color.WHITE)
+    print("Enhanced Search Test 6 - Enhanced search blocks a live five on both ends: PASS")
+
+
+def test_forward_pruning_reduces_nodes_on_quiet_board():
+    board = create_quiet_board()
+    pre_move = create_move_at(3, 10)
+    plain_stats = SearchStats()
+    enhanced_stats = SearchStats()
+    search_alpha_beta(board, Color.WHITE, 4, pre_move, plain_stats)
+    search_alpha_beta_with_quiescence(board, Color.WHITE, 4, pre_move, enhanced_stats)
+    assert enhanced_stats.node_count < plain_stats.node_count
+    print("Enhanced Search Test 7 - Forward pruning visits fewer nodes at depth four on a quiet board: PASS")
+
+
+# ============================================================
+# OPENING BOOK TESTS
+# ============================================================
+
+def test_position_key_is_stone_inventory():
+    board = create_empty_board()
+    board[10][10] = Color.BLACK
+    board[3][3] = Color.WHITE
+    assert position_key(board) == "3.3.2,10.10.1"
+    twin = create_empty_board()
+    twin[3][3] = Color.WHITE
+    twin[10][10] = Color.BLACK
+    assert position_key(twin) == position_key(board)
+    print("Opening Book Test 1 - Position key is a stone inventory: PASS")
+
+
+def test_book_move_returns_recorded_move():
+    board = create_empty_board()
+    board[10][10] = Color.BLACK
+    book = {position_key(board): "AABB"}
+    move = book_move(board, book)
+    assert move is not None
+    assert placed_cells(move) == {(19, 1), (18, 2)}
+    print("Opening Book Test 2 - Book lookup returns the recorded move: PASS")
+
+
+def test_book_move_rejects_occupied_and_invalid():
+    board = create_empty_board()
+    first = msg2move("AABB").positions[0]
+    board[first.x][first.y] = Color.BLACK
+    assert book_move(board, {}) is None
+    assert book_move(board, {"nope": "AABB"}) is None
+    assert book_move(board, {position_key(board): "ZZZZ"}) is None
+    assert book_move(board, {position_key(board): "AABB"}) is None
+    print("Opening Book Test 3 - Book lookup rejects missing, malformed and occupied entries: PASS")
+
+
+def test_engine_plays_book_move():
+    scratch = create_empty_board()
+    for stone in msg2move("JILL").positions:
+        scratch[stone.x][stone.y] = Color.BLACK
+    engine = GameEngine()
+    engine._cmd_new("new white")
+    engine._book = {position_key(scratch): "AABB"}
+    result, output = capture_output(lambda: engine._cmd_move("move JILL"))
+    assert result is True
+    assert "Book:\tAABB" in output
+    assert "move AABB" in output
+    assert "Search Time" not in output
+    assert engine.board[19][1] == Color.WHITE
+    assert engine.board[18][2] == Color.WHITE
+    print("Opening Book Test 4 - The engine plays a recorded book move: PASS")
+
+
+def test_engine_falls_back_to_search_without_book_entry():
+    engine = GameEngine()
+    engine._cmd_new("new white")
+    engine._book = {}
+    result, output = capture_output(lambda: engine._cmd_move("move JILL"))
+    assert result is True
+    assert "Search Time" in output
+    reply = next(line for line in output.splitlines() if line.startswith("move "))
+    assert len(reply[5:]) == 4
+    assert all("A" <= c <= "S" for c in reply[5:])
+    print("Opening Book Test 5 - Without a book entry the engine searches: PASS")
+
+
 # ============================================================
 # PROTOCOL TESTS (GUI CONTRACT, Connect6GUI/engine.py)
 # ============================================================
@@ -980,6 +1142,22 @@ if __name__ == "__main__":
     test_candidates_few_empties()
     test_candidates_full_board()
     test_candidates_custom_limit()
+
+    print("\n========== ENHANCED SEARCH TESTS (QUIESCENCE + FORWARD PRUNING) ==========\n")
+    test_quiescence_finds_win_beyond_horizon()
+    test_quiescence_prices_hopeless_defence()
+    test_enhanced_finds_winning_move()
+    test_enhanced_blocks_opponent_win()
+    test_enhanced_blocks_live_four()
+    test_enhanced_blocks_live_five()
+    test_forward_pruning_reduces_nodes_on_quiet_board()
+
+    print("\n========== OPENING BOOK TESTS ==========\n")
+    test_position_key_is_stone_inventory()
+    test_book_move_returns_recorded_move()
+    test_book_move_rejects_occupied_and_invalid()
+    test_engine_plays_book_move()
+    test_engine_falls_back_to_search_without_book_entry()
 
     print("\n========== PROTOCOL TESTS (GUI CONTRACT) ==========\n")
     test_protocol_name_handshake()

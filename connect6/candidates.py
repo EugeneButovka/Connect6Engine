@@ -25,24 +25,45 @@ from .threats import count_move_threats
 
 
 def generate_candidate_moves(board: Board, limit: int, color: Color) -> list[Move]:
+    moves, _ = _generate_candidates(board, limit, color, score_threats=False)
+    return moves
+
+
+def generate_scored_candidate_moves(board: Board, limit: int, color: Color) -> tuple[list[Move], list[int]]:
+    return _generate_candidates(board, limit, color, score_threats=True)
+
+
+def _generate_candidates(
+    board: Board,
+    limit: int,
+    color: Color,
+    score_threats: bool,
+) -> tuple[list[Move], list[int]]:
     scratch = copy_board(board)
     cells, completion_pairs = _get_scored_cells(scratch)
     cells = cells[:MAX_CANDIDATE_CELLS]
     moves: list[Move] = []
+    threats: list[int] = []
     seen: set[CellPair] = set()
     for x1, y1, x2, y2 in completion_pairs:
+        before = len(moves)
         _try_add_candidate(moves, seen, limit, x1, y1, x2, y2)
+        if score_threats and len(moves) > before:
+            threats.append(count_move_threats(scratch, x1, y1, x2, y2, color))
     pairs: list[RankedPair] = []
     for i in range(len(cells)):
         for j in range(i + 1, len(cells)):
             pairs.append((_pair_correction(scratch, cells[i], cells[j]), i, j))
     pairs.sort(reverse=True)
-    pairs = _rank_by_threats(scratch, cells, pairs, color)
+    pairs, counted = _rank_by_threats(scratch, cells, pairs, color)
     for _, i, j in pairs:
         if len(moves) >= limit:
-            return moves
+            break
+        before = len(moves)
         _try_add_candidate(moves, seen, limit, cells[i][1], cells[i][2], cells[j][1], cells[j][2])
-    return moves
+        if len(moves) > before:
+            threats.append(counted.get((i, j), -1))
+    return moves, threats
 
 
 def _get_scored_cells(board: Board) -> tuple[list[ScoredCell], list[CompletionPair]]:
@@ -86,19 +107,21 @@ def _rank_by_threats(
     cells: list[ScoredCell],
     pairs: list[RankedPair],
     color: Color,
-) -> list[RankedPair]:
+) -> tuple[list[RankedPair], dict[tuple[int, int], int]]:
     top = pairs[:THREAT_RANK_WIDTH]
     win_pairs: list[RankedPair] = []
     ranked: list[RankedPair] = []
+    counted: dict[tuple[int, int], int] = {}
     for score, i, j in top:
         threats = count_move_threats(board, cells[i][1], cells[i][2], cells[j][1], cells[j][2], color)
+        counted[(i, j)] = threats
         if threats >= THREAT_WIN:
             win_pairs.append((score, i, j))
         else:
             ranked.append((score + THREAT_WEIGHT * threats, i, j))
     win_pairs.sort(reverse=True)
     ranked.sort(reverse=True)
-    return win_pairs + ranked + pairs[THREAT_RANK_WIDTH:]
+    return win_pairs + ranked + pairs[THREAT_RANK_WIDTH:], counted
 
 
 def _pair_correction(board: Board, cell_a: ScoredCell, cell_b: ScoredCell) -> int:

@@ -1020,3 +1020,231 @@ neighbours.
    populations of 6, two seeds, deterministic games. Fitness is a fixed function of the
    genome — zero-variance and exactly reproducible, but it quantifies dominance over that
    population and protocol, not absolute strength against the field.
+
+## 10. Search enhancements — quiescence, forward pruning, and an opening book
+
+Section 8.4 defined the root score as horizon-relative by construction, and section 7 named the
+single-cell horizon of the candidate pool; between them they predict exactly what the depth-3
+deployment search does wrong: a forced win that completes one ply past the horizon prices as
+nothing, and the oscillation of root scores across even and odd depths is noise the engine acts
+on. Three enhancements ship to close that gap, behind one new method so the baselines stay
+byte-identical — `search_alpha_beta_with_quiescence` in `search.py` (quiescence + forward
+pruning), the opening book (`connect6/opening_book.py`), and their support constants in
+`defines.py`. The plain `search_alpha_beta` and `search_min_max` are untouched: they remain the
+spec baselines, the §5-§8 measurements, and the GA referee of section 9. The engine's
+`_search_and_play` now calls the enhanced method. Everything in this section is reproduced by
+`tuning/measure_search.py` (positions, verdict tables, head-to-head referee) and
+`tuning/generate_opening_book.py` (the book); reruns are exact — the searches are deterministic.
+
+### 10.1 Method
+
+**Quiescence search.** At depth 0 the plain search returns the static evaluation. The enhanced
+search instead asks whether the position is *loud*: did the move just played create threats
+(the parent passes its pair's threat count down as `incoming`), or does a live five stand (a
+standing pat of magnitude >= `LIVE_FIVE`, the only magnitude the tier weights can produce)? If
+neither — *quiet* — the static score stands, with the usual fail-soft cutoffs applied first
+(`stand >= beta` for black, `stand <= alpha` for white). If loud, the node expands its head
+`QUIESCENCE_WIDTH = 8` candidates — the generator injects completions for both colors before
+any width cut, so the mover's wins and the forced blocks are always in the pool. Quiet nodes
+may still extend themselves when the mover *can create* forcing play: pairs creating at least
+`QUIESCENCE_MIN_THREATS = 3` threats are expanded, with the standing pat as the floor the
+extension must beat. Every expanded node re-checks loudness the same way, up to
+`QUIESCENCE_DEPTH = 6` extension plies. Any pair whose threat count reaches `THREAT_WIN` is a
+verified completion by the mover — the window scan has seen a six — and returns the terminal
+band immediately. Two approximations are priced in and stated plainly: the loud defense pool is
+width-limited (a saving defence ranked 9th or worse is invisible — a false win verdict is
+possible in principle), and a chain still loud at the depth cap prices as its static score.
+Nodes count once — the leaf delegates to quiescence before the counter increments.
+
+The 3-threat threshold is the whole design in one number. The defender places exactly two
+stones per turn (section 8's threat vocabulary), so two simultaneous threats are *exactly
+blockable* — a live-4 fork is forcing but refutable — while three or more win outright. The
+measurement agreed emphatically: on the midgame position below, a 2-threat threshold turns
+every quiet leaf into a tactical bubble, because extending an open 3-run by a pair creates two
+threats almost at will — 12,467 nodes and 5.7 s for one depth-3 move — while the 3-threat
+threshold searches the same position in 1,305 nodes with *identical* verdicts on every tactical
+test. Chess quiescence expands checks, not mere threats; the defender-stone arithmetic says
+Connect6's "check" is the unblockable fork.
+
+**Forward pruning.** The interior plies of the enhanced search take their candidate widths
+from `FORWARD_WIDTHS = (30, 30, 16, 10)` by ply from the root: full width at the root *and at
+the opponent's first reply ply*, pruned from the mover's own follow-up ply on. The principle:
+a refutation pruned at the reply ply is a blind spot no deeper ply can repair (the root move is
+judged safe when it is not), while the mover's own follow-ups are the cheapest thing to narrow
+— they overlap heavily with what quiescence explores at the leaves anyway. Completion pairs are
+injected before every width cut, so wins and forced blocks survive all widths. The schedule is
+not a guess: the first candidate `(30, 20, 12, 8)` lost the head-to-head fixture 0-8 (below),
+and replaying the two losing games with only the reply ply re-widened flipped both — the
+empirical content of the principle above.
+
+**Opening book.** `tuning/generate_opening_book.py` plays the engine against itself at depth 4
+over five opening lines — white's first replies to the forced `JJ` are varied (`IIKK`, `JIKJ`,
+`JKJI`, `IKKJ`, `LLHH`; black's first move is protocol-pinned), ten plies recorded per line —
+and writes every visited position's move to `tuning/opening_book.json`: 47 entries. A position
+key is the stone inventory — `x.y.value` for every stone in scan order — and the side to move
+needs no encoding: under protocol play each move adds two stones of one color, so black moves
+at stone counts 0 and 3 (mod 4) and white at 1 (mod 4); no inventory is ever ambiguous about
+its mover, and no cross-color collision exists. Before every search, `_search_and_play` looks
+the position up; a hit is applied, announced with a `Book:` line, and the search is skipped
+entirely — a miss, an unreadable file, an invalid or now-occupied entry falls back to the
+search silently. The path is `tuning/opening_book.json` by default, overridable with the
+`BOOK_FILE` environment variable (the test suite pins it to a missing file, so every search
+test measures the search).
+
+### 10.2 Measurements
+
+All numbers: the deployment weights (`tuning/winner.json`), depth as noted, one measurement
+each — the searches are deterministic, so a rerun is the same measurement. Five positions:
+two quiet (opening scatter; two open 3-runs) and three tactical (the fork attack of section
+8, the fork *completed* so the defender is already lost, and a five-run where the defence
+blocks both ends but black keeps a forced follow-up). `win verdict` marks a score in the
+terminal band.
+
+| position, side to move | method | d2 nodes / ms / score | d3 nodes / ms / score | d4 nodes / ms / score |
+|---|---|---|---|---|
+| opening, white | plain | 164 / 21 / -40 | 1,593 / 141 / -436 | 15,964 / 2,310 / -40 |
+| | enhanced | 164 / 45 / -40 | 1,668 / 322 / -386 | 7,581 / 2,399 / -38 |
+| midgame, white | plain | 191 / 25 / -134 | 1,425 / 193 / -2,342 | 11,799 / 1,968 / -305 |
+| | enhanced | 402 / 116 / -134 | 1,458 / 494 / -703 | 3,782 / 1,492 / -617 |
+| fork attack, black | plain | 173 / 25 / 742 | 78 / 19 / **20,000 win** | 347 / 45 / **win** |
+| | enhanced | 32 / 18 / **win** | 78 / 26 / **win** | 179 / 66 / **win** |
+| fork completed, white | plain | 77 / 19 / **win** | 347 / 45 / **win** | — |
+| | enhanced | 77 / 26 / **win** | 207 / 110 / **win** | — |
+| five-run attack, white | plain | 90 / 15 / 10,460 | 249 / 36 / 1,536 | 1,616 / 197 / 11,596 |
+| | enhanced | 87 / 26 / **win** | 103 / 35 / **win** | 110 / 31 / **win** |
+
+**The verdict table is the headline.** On the fork attack, plain depth 2 prices a forced win as
++742; enhanced sees it in 32 nodes. On the completed fork — the defender to move — plain depth 1
+says +742, enhanced depth 1 already returns the honest terminal score. The five-run position
+is the sharpest exhibit: the correct defence (blocking both ends) is found by *every* search at
+every depth, but plain never gets the *verdict* right at depths 2-4 — its score oscillates
+10,460 → 1,536 → 11,596 across the parity illusion of section 5, always short of the terminal
+band — while enhanced is exact at every depth for about a hundred nodes: black's follow-up
+(fork, block, fork, block, unblockable double live-4) runs through the loud chain inside the
+extension.
+
+**Head-to-head at the deployment depth** — enhanced vs plain, both through the real referee,
+depth 3, twelve games over six openings (white's first reply varied), color assignments
+alternated per game; deterministic engines, so this is the complete record of the fixture:
+
+| schedule / setting | record |
+|---|---|
+| plain (baseline) | — |
+| quiescence only, widths 30/30/30/30 | 8 wins, 3 losses, 1 draw of 12 |
+| `(30, 30, 20, 12)` | 3-4-1 of 8 |
+| `(30, 20, 12, 8)` (first candidate) | **0-8**, plus both unseeded games lost |
+| `(30, 30, 16, 10)` (shipped) | **11-1** of 12 |
+
+The reply-ply width is the entire difference between the last two rows. With the shipped
+schedule the twelve games run 3-95 s each (25-97 stones); the lone loss is one color assignment
+of one opening.
+
+**Book.** The engine probe: `move JJ` against the shipped book answers `Book: IIKK` /
+`move IIKK` with no search line — the depth-4 opening search it replaces costs ~2.4 s (the
+opening row above). A `move` off the book lines (e.g. `LKKK` there) falls straight back to the
+search and answers normally. 47 entries cover roughly the first five plies; beyond them real
+opponents diverge from self-play and the search takes over, by design.
+
+### 10.3 Observations
+
+- **Quiescence changes verdicts, not just moves.** In the five-run exhibit the two searches
+  agree on the move at every depth and disagree on the game: enhanced prices the position
+  lost for white (correctly — the follow-up attack is forced) while plain keeps acting on
+  oscillating mid-band scores. Score and move decouple: enhanced returns the terminal score
+  *and* still plays the double-block, because the block is the best move among lost ones.
+- **The extension horizon is real but bounded.** The fork attack is found one full depth
+  earlier than plain (d2 vs d3); the five-run defence needs the whole six-ply extension —
+  fork, block, fork, block, unblockable fork, complete — and fits exactly. Chains that stay
+  loud past the cap price as static: the approximation is bounded, and the verdict tests pin
+  it.
+- **The 2-vs-3 threshold is a 10x cost lever with no measured strength cost.** Threshold 2:
+  12,467 nodes midgame d3, every quiet leaf sprouting refutable live-4 bubbles. Threshold 3:
+  1,305 nodes, same verdicts everywhere. The defender-stones argument of section 8 turns out
+  to be the right cost model: what is exactly blockable is not worth searching past.
+- **Pruning safety is ply-relative.** The root and reply plies must stay full-width at depth
+  3 — pruning there lost every game of the fixture — while the mover's own follow-ups prune
+  freely. An 8-of-8 sweep that survives re-validation at 11-1 over doubled openings says the
+  *shipped* schedule keeps what the first one threw away.
+- **Wall time is the honest cost.** At d3, enhanced costs 2-2.5x plain's wall time on quiet
+  boards (the quiescence leaf pays candidate generation, about one interior node's cost, on
+  every non-cutoff leaf); at d4 the pruning pays it back — midgame d4 runs 3,782 nodes /
+  1.49 s against plain's 11,799 / 1.97 s. The deployment depth 3 is the *worst* depth for the
+  enhancement's economics, and it is still the right trade for a tactical game.
+- **Determinism cuts both ways.** Every number here is exactly reproducible — and exactly one
+  sample of its fixture: the 12 games are 12 fixed pairings, not 12 draws from a distribution.
+  The conclusions are protocol-relative (center opening, depth 3, six openings), the same
+  caveat section 9 carries.
+
+### 10.4 The declined enhancement: transposition tables and symmetries
+
+The classic fourth enhancement was measured, costed, and declined: at this engine's deployment
+depth it is the highest-burden, near-zero-gain item on the list. The case, quantified:
+
+- **Transpositions are structurally rare in Connect6, and measurably rarer.** Every move adds
+  *two* stones of one color, and the mover is pinned by the parity arithmetic above — a
+  position can only repeat if the same two-stone sets were played in a different order, and
+  the interleave space is a few swaps, nothing like chess's free reordering. Instrumenting a
+  faithful replica of the plain search (identical scores, node counts within 10%) to record
+  every visited position's inventory key:
+
+  | position | depth | nodes | unique positions | revisits |
+  |---|---|---|---|---|
+  | opening | 3 | 1,593 | 1,545 | 48 (**3.0%**) |
+  | opening | 4 | 15,964 | 15,168 | 796 (**5.0%**) |
+  | midgame | 3 | 1,300 | 1,102 | 198 (**15.2%**) |
+  | midgame | 4 | 11,687 | 10,201 | 1,486 (**12.7%**) |
+
+  A *perfect* transposition table saves at most the revisit column — 3-5% of nodes in
+  openings, 13-15% in the most tactical midgame measured — and only the *search* portion of
+  each saved node (the move is still made and scored in the parent).
+- **The hash upkeep eats the savings.** `position_key` (441-cell scan, 0.007 ms) costs a fifth
+  of one `evaluate` call (0.034 ms) *per node*, before any table insert, lookup, or collision
+  policy; an incremental Zobrist scheme is cheaper per move but pays interpreted-Python
+  overhead per stone placed and removed — the make/unmake loop already runs at ~70 µs/node
+  total. Saving ~5% of nodes while taxing ~100% of them with bookkeeping is a net loss at
+  d3 openings and roughly a wash in the midgame.
+- **The correctness burden is the real price.** A sound table needs bound types (exact /
+  lower / upper — mixing them silently weakens cutoffs), depth- and ply-adjusted terminal
+  scores (a stored `MAXINT` must not be replayed as a same-distance win at a different depth,
+  or the fastest-mate ordering breaks), and a collision policy (ignore-and-trust risks
+  silently corrupting exactly the terminal-band verdicts sections 7-10 lean on; verify-on-hit
+  re-costs the position and erases the gain). Every one of these is a silent-failure bug
+  class, and the existing test suite — scores, verdicts, node ceilings — would not reliably
+  catch a broken table. The three shipped enhancements, by contrast, are each pinned by tests
+  that fail loudly if the mechanism regresses.
+- **Depth ceiling, not node ceiling.** TT gains grow with depth; this codebase's practical
+  ceiling is depth 4 — section 9 abandoned a depth-4 GA validation at ~3 s per move and per
+  game times of minutes, and the d4 rows above run 1.5-2.4 s per move. At 1.3k-16k visited
+  nodes the whole tree is cache-resident and memory is not the constraint; the constraint is
+  Python interpreter speed, which a table does not buy back.
+- **Symmetries are subsumed where they exist.** A Connect6 position has an 8-fold symmetric
+  twin only while its stone set is itself symmetric — which is to say, over the empty board
+  and the protocol-pinned `JJ` opening. White's first reply breaks the symmetry on ply 1 of
+  every real game, and the opening book already answers the symmetric prefix without any
+  search at all. Charging canonical-form machinery (8 key probes per lookup, or 8-fold
+  storage) to accelerate a prefix the book covers is cost without a customer.
+
+### 10.5 Results and conclusions
+
+1. **Quiescence is a correctness feature, not a speed feature.** On three tactical positions
+   it corrects the root verdict at depths where plain is wrong or oscillating — a forced win
+   one depth earlier, a lost defence priced honestly at depth 1, a five-run position plain
+   never gets right at d2-d4 — for roughly a hundred nodes a position. The cost is 2-2.5x wall
+   time at d3 on quiet boards, repaid with interest by pruning at d4 (3,782 vs 11,799 nodes
+   midgame, 1.49 vs 1.97 s).
+2. **Forward pruning is safe exactly one ply deep.** The reply ply must stay full-width —
+   `(30, 20, 12, 8)` lost 0-8 — and pruning only the mover's own follow-ups `(30, 30, 16, 10)`
+   is the shipped schedule: 11-1 over the fixture, vs 8-3-1 for no pruning at all. The
+   mechanism is understood: a pruned refutation is an unrecoverable blind spot, a pruned
+   follow-up is usually re-covered by quiescence at the leaves.
+3. **The book is a wire-speed prefix.** 47 self-play entries answer the first ~5 plies
+   instantly where the search would spend ~1-2.4 s, fall back silently on divergence, and
+   cost nothing when absent.
+4. **The strength ordering is measured, protocol-relative, and honest about its sample:**
+   enhanced-with-pruning (11-1) > quiescence-only (8-3-1) > plain, at depth 3 over six
+   openings — twelve deterministic games, so the record is complete for the fixture and
+   unproven beyond it.
+5. **Transposition tables and symmetry reductions stay out** — 3-15% measured ceiling on
+   node savings, hash upkeep in the same order, three silent-failure bug classes, and a
+   symmetric prefix the book already answers. Highest burden, near-zero gain at the
+   deployment depth: declined, with the numbers on record.
