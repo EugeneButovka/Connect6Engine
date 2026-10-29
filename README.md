@@ -99,7 +99,9 @@ benchmarks/                         the benchmark notebooks
 ├── perf_depth_v1_min_max.ipynb     min-max only, depths 1-4, against the O(B^depth) model
 ├── perf_depth_v2_alpha_beta.ipynb  min-max vs alpha-beta, depths 1-5, with the ideal O(B^(depth/2)) guide
 ├── perf_search_v4_enhanced.ipynb   the enhanced search vs plain alpha-beta: section-10 position tables, the 11-1 head-to-head fixture, every number asserted
-└── perf_versions_v1_v4.ipynb       the version timeline v1-v4: games in both colors plus cost tables at depths 3-4, every number asserted
+├── perf_versions_v1_v4.ipynb       the version timeline v1-v4: games in both colors plus cost tables at depths 3-4, every number asserted
+├── perf_external_cloudict.ipynb    the external yardstick: the deployed engine vs the gold-medalist cloudict, both games asserted
+└── cloudict/                       vendored cloudict engine: BSD C++ source + patterns.in, built and driven by the notebook
 tuning/                             the experiments and their generated artifacts
 ├── genetic_tuner.py                genetic tuning of the evaluation weights (self-play round-robin)
 ├── run_experiment.py               repeats the documented GA experiment: both seeds, controls, winner refresh
@@ -109,7 +111,7 @@ tuning/                             the experiments and their generated artifact
 ├── winner.json                     engine default weights: the strongest champion found by the experiment
 └── default.json                    the hand-tuned configuration: mandatory fallback, the tuner baseline, pinned by the test suite
 docs/                               documentation
-└── EVALUATION.md                   evaluation & search documentation (12 chapters)
+└── EVALUATION.md                   evaluation & search documentation (13 chapters)
 ```
 
 - **Search** (`search.py`) — one unified `_alpha_beta` loop: the `prune` flag selects min-max or alpha-beta; the `enhanced` flag (a) forward-prunes interior plies by `FORWARD_WIDTHS` (full width at the root and the reply ply — completion pairs survive every cut) and (b) at depth zero hands over to quiescence: stand on the static evaluation unless the position is loud (threats just made, or a standing live five), then extend through forcing moves up to six more plies. Forced wins and lost defences are thereby priced at their true terminal value at depths where plain alpha-beta still oscillates.
@@ -119,7 +121,7 @@ docs/                               documentation
 
 ## Measured performance
 
-All numbers from [docs/EVALUATION.md](docs/EVALUATION.md) (deterministic searches, exact reruns; sections 10-11):
+All numbers from [docs/EVALUATION.md](docs/EVALUATION.md) (deterministic searches, exact reruns; sections 10-12):
 
 | measurement | result |
 |---|---|
@@ -130,6 +132,7 @@ All numbers from [docs/EVALUATION.md](docs/EVALUATION.md) (deterministic searche
 | enhanced vs plain head-to-head, 12 games | **11-1** |
 | GA champion vs hand-tuned weights | 2-0, both colors |
 | opening reply with the book | instant; the depth-4 search it replaces costs 2.6 s |
+| deployed engine vs cloudict (external) | **0-2** — both losses closed by cloudict's VCF, plies 14-15 |
 
 *Legend — **plain** is `search_alpha_beta` with the tuned weights; **enhanced** is the deployed `search_alpha_beta_with_quiescence` (+ quiescence, forward pruning, opening book). **Nodes** count the positions a search evaluates; **depth** is plies of full-width lookahead, with quiescence extending past it in the enhanced search. Scores are black-perspective (positive favours Black; ±20,000 is the forced-win band). The **fork attack** and **five-run defence** are the fixed tactical positions of [section 10](docs/EVALUATION.md#10-search-enhancements--quiescence-forward-pruning-and-an-opening-book); head-to-head is 12 deterministic games over six openings with colors alternated; the deployment depth is 3.*
 
@@ -163,12 +166,13 @@ The codebase is fully typed: `Color`/`GameResult` enums, frozen `Position`/`Move
 
 ## Benchmarks
 
-Four benchmark notebooks, all runnable in Jupyter or PyCharm's built-in notebook support. The last two pin their weights before importing the engine and **assert every documented deterministic number** (nodes, scores, moves, game outcomes) against the evaluation chapter, so a clean run is itself a validation — only wall times vary between runs.
+Five benchmark notebooks, all runnable in Jupyter or PyCharm's built-in notebook support. The last three pin their weights before importing the engine and **assert every documented deterministic number** (nodes, scores, moves, game outcomes) against the evaluation chapter, so a clean run is itself a validation — only wall times vary between runs.
 
 - `benchmarks/perf_depth_v1_min_max.ipynb` — the min-max baseline: `search_min_max` at depths 1–4 (one run each, ~1 minute: the depth-4 search dominates), plotted against the theoretical `O(B^depth)` model.
 - `benchmarks/perf_depth_v2_alpha_beta.ipynb` — the comparison: `search_min_max` at depths 1–4 and `search_alpha_beta` at depths 1–5, asserting identical scores, printing the combined time/node/growth table, and plotting both curves against the theoretical `O(B^depth)` model and the ideal `O(B^(depth/2))` guide. On that board alpha-beta runs ~14x fewer nodes at depth 3 and ~44x at depth 4, making depths 4-5 playable.
 - `benchmarks/perf_search_v4_enhanced.ipynb` — the section-10 measurements: the enhanced search (quiescence + forward pruning) vs plain alpha-beta on the five documented positions at depths 2–4 (verdict exhibits, cost exhibits), then the 12-game head-to-head referee over six openings at depth 3 — the 11-1 fixture, all node counts, scores and moves asserted (~10 min; the games dominate).
 - `benchmarks/perf_versions_v1_v4.ipynb` — the section-11 benchmark: the four engine versions (naive min-max, alpha-beta, alpha-beta with tuned weights, the deployed engine) play the timeline's pairings in both colors at depth 3, plus per-position cost tables at depths 3–4 where the opening book answers the opening reply in zero nodes — all 8 games and 42 table rows asserted (~7 min; the v1 games dominate).
+- `benchmarks/perf_external_cloudict.ipynb` — the section-12 external yardstick: the deployed engine vs the vendored cloudict — a Computer-Olympiad gold medalist at its default depth 6 with VCF — through a cross-process protocol referee, both color assignments, every move, node count, book hit and VCF finish asserted (~4 min; cloudict's depth-6 searches dominate).
 
 ## Tuning
 
@@ -195,6 +199,7 @@ uv run tuning/generate_opening_book.py                   # regenerate tuning/ope
 | GA controls | baseline mirror; champion vs champion | black wins the baseline mirror (ply 38); the champions' mutual games end in white wins (ply 15) |
 | Search enhancements (section 10) | 12 games over 6 openings, colors alternated | shipped schedule `(30, 30, 16, 10)` beats plain alpha-beta **11-1**; the rejected `(30, 20, 12, 8)` lost 0-8 |
 | Version benchmark (section 11) | timeline pairings, both colors | tuned weights beat hand-tuned 2-0; deployed engine beats tuned-weights 2-0 and the naive baseline 2-0 |
+| External yardstick (section 12) | cloudict at depth 6 + VCF, both colors | cloudict wins 2-0 (plies 15, 14), finishing both games by VCF |
 
 *Legend — weight configs are written `single-pair-triple-four | factor_two-factor_many | threat` (the tunable genes; the live-5 tier stays pinned at 10000); **fitness** is wins (1) plus draws (0.5) per game, out of 10 per generation round-robin; a **2-0** record means the winner took both color assignments; every game is deterministic, so each record is the complete fixture, not a sample.*
 
@@ -214,6 +219,7 @@ uv run tuning/generate_opening_book.py                   # regenerate tuning/ope
 | 9 | [Weight tuning — a genetic algorithm experiment](docs/EVALUATION.md#9-weight-tuning--a-genetic-algorithm-experiment) | breeding weight vectors by self-play; the champion's evidence |
 | 10 | [Search enhancements](docs/EVALUATION.md#10-search-enhancements--quiescence-forward-pruning-and-an-opening-book) | quiescence, forward pruning, the opening book; and why transposition tables stay out |
 | 11 | [The version timeline](docs/EVALUATION.md#11-the-version-timeline--a-final-comparison) | the four engine versions: who wins, what it costs |
-| 12 | [Deliverables](docs/EVALUATION.md#12-deliverables--the-reusable-inventory) | the reusable inventory: the engine as a library, the tuning harness, the GA tuner, the book machinery, the notebooks, the test patterns |
+| 12 | [The external yardstick](docs/EVALUATION.md#12-the-external-yardstick--the-deployed-engine-vs-cloudict) | the deployed engine vs the gold-medalist cloudict: two games, two identified gaps |
+| 13 | [Deliverables](docs/EVALUATION.md#13-deliverables--the-reusable-inventory) | the reusable inventory: the engine as a library, the tuning harness, the GA tuner, the book machinery, the notebooks, the test patterns |
 
 *Legend — § is the chapter number in docs/EVALUATION.md; short chapters are grouped on one row; titles link to the chapter anchors.*

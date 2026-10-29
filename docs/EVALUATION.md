@@ -1392,14 +1392,153 @@ At depth 4 (min-max omitted — its full d4 trees are minutes long):
    records, not samples; strength conclusions remain protocol-relative (center opening,
    depth 3, 60-ply cap); and every equal-strength pairing still leans black.
 
-## 12. Deliverables — the reusable inventory
+## 12. The external yardstick — the deployed engine vs cloudict
+
+The chapters above measure the engine against itself — its baselines, its weight sets, its
+own search generations. This chapter measures it against somebody else's engine, as
+shipped by its authors: **cloudict**, the C++ Connect6 engine by Hao Cui, Liang Li, Ruijian
+Wang and Siran Lin (2008-2013), gold medal at the 16th Computer Olympiad (2011) and at the
+14th (2009, as Bit) — the engine whose protocol and command set this coursework descends
+from. `benchmarks/perf_external_cloudict.ipynb` plays the deployed engine (champion
+weights, opening book, quiescence and forward pruning, depth 3 — the configuration of
+`dist/main`) against it, both engines as subprocesses: cloudict at its default depth 6
+with its VCF threat search armed, ours at the deployment depth 3.
+
+A provenance note. The prebuilt engine snapshots shipped in the Connect6GUI project's
+`engines/` folder are x86_64 binaries — Linux, Windows, and one 2016-era macOS Mach-O
+that current macOS kills at exec even after an ad-hoc re-signature. So `benchmarks/cloudict/`
+vendors the upstream BSD-licensed source (github.com/lang010/cloudict); the notebook
+compiles it natively if the binary is missing, and runs it in a scratch directory with
+`patterns.in` beside it, as its VCF search expects.
+
+cloudict seeds nothing, our search is exact — both engines are deterministic, so one game
+per color assignment is the complete fixture, and the notebook asserts every move, node
+count, book hit and VCF finish against this chapter. Only wall times vary between runs.
+
+### 12.1 Method
+
+The referee speaks the shared protocol to both processes: `new black` makes an engine
+auto-play the center opening `JJ`, every later reply arrives as `move XXXX` and is relayed
+to the opponent, and `depth d` sets each engine's lookahead (3 for ours, 6 for cloudict —
+each as deployed). The board is mirrored independently with the engine package's own rules
+(`connect6.board`), so the winner never depends on either engine's self-reporting; a
+60-ply cap bounds the fixture. Stats lines are parsed per engine — ours prints
+`Search Time/Node/Score` or `Book:`, cloudict prints `VCF time/VCF node/AB Time/Node/Score`
+and `Win by VCF.` when its threat search has taken over — and a reader thread per engine
+feeds a queue, so a stuck process fails loudly at the 900-second-per-move deadline instead
+of hanging the referee.
+
+### 12.2 The games
+
+| game | black | white | outcome | winner | ply | duration |
+|---|---|---|---|---|---|---|
+| 1 | cloudict | ours | black wins | **cloudict** | 15 | 86.8 s |
+| 2 | ours | cloudict | white wins | **cloudict** | 14 | 98.9 s |
+
+cloudict wins both color assignments. Game 1, ply by ply (`VCF` marks the moves cloudict's
+forced-win search took over):
+
+| ply | color | engine | move | cost |
+|---|---|---|---|---|
+| 1 | black | cloudict | JJ | the center opening |
+| 2 | white | ours | IIKK | **book** |
+| 3 | black | cloudict | LJJH | 46.4 s · 604,211 nodes |
+| 4 | white | ours | KIKJ | 0.61 s · 2,027 nodes |
+| 5 | black | cloudict | KHJI | 6.3 s · 81,197 nodes |
+| 6 | white | ours | JKLK | 0.98 s · 3,214 nodes |
+| 7 | black | cloudict | HKIJ | 11.3 s · 109,776 nodes |
+| 8 | white | ours | LGGL | 0.61 s · 1,637 nodes |
+| 9 | black | cloudict | IHJG | 12.9 s · 153,739 nodes |
+| 10 | white | ours | JFLH | 2.74 s · 6,760 nodes |
+| 11 | black | cloudict | KFHI | **VCF**, 0.010 s |
+| 12 | white | ours | GJLE | 1.81 s · 4,387 nodes |
+| 13 | black | cloudict | HHHJ | **VCF**, 0.000 s |
+| 14 | white | ours | HGHF | 0.04 s · 112 nodes |
+| 15 | black | cloudict | FHGH | **VCF**, 0.004 s — six in a row |
+
+Game 2, colors swapped — ours opens, cloudict answers, and its threat search closes this
+one a ply earlier:
+
+| ply | color | engine | move | cost |
+|---|---|---|---|---|
+| 1 | black | ours | JJ | the center opening |
+| 2 | white | cloudict | IJJI | 36.0 s · 483,169 nodes |
+| 3 | black | ours | HKII | 0.25 s · 1,415 nodes |
+| 4 | white | cloudict | KKKJ | 25.8 s · 287,863 nodes |
+| 5 | black | ours | KIIK | 0.45 s · 1,557 nodes |
+| 6 | white | cloudict | LKHL | 14.4 s · 181,632 nodes |
+| 7 | black | ours | IHGK | 0.79 s · 2,535 nodes |
+| 8 | white | cloudict | MLKL | 10.3 s · 112,558 nodes |
+| 9 | black | ours | NMHH | 6.50 s · 19,197 nodes |
+| 10 | white | cloudict | NLLL | **VCF**, 0.096 s |
+| 11 | black | ours | JLOL | 1.83 s · 4,584 nodes |
+| 12 | white | cloudict | INJM | **VCF**, 0.000 s |
+| 13 | black | ours | MJNI | 1.78 s · 4,219 nodes |
+| 14 | white | cloudict | GPHO | **VCF**, 0.004 s — six in a row |
+
+### 12.3 What it costs
+
+| game | engine | moves | wall s | max nodes | searched moves | VCF moves | book hits |
+|---|---|---|---|---|---|---|---|
+| 1 | ours | 7 | 6.8 | 6,760 | 6 | 0 | 1 |
+| 1 | cloudict | 8 | 79.9 | 604,211 | 4 | 3 | 0 |
+| 2 | ours | 7 | 11.6 | 19,197 | 6 | 0 | 0 |
+| 2 | cloudict | 7 | 87.2 | 483,169 | 4 | 3 | 0 |
+
+The two engines buy their moves with different currencies. cloudict spends 6-46 s and
+81,000-604,000 nodes on its four searched moves per game (depth 6), then finishes free on
+VCF; ours spends 0.04-6.5 s and at most 19,197 nodes per move (depth 3 + quiescence), and
+answers one move from the book. Per-game node totals: 18,137 vs 948,923 (game 1), 33,507
+vs 1,065,222 (game 2) — cloudict pays 32-52x our node price per game, and buys the win
+with it.
+
+### 12.4 Observations
+
+- **The verdict is honest and one-sided: cloudict 2-0, both games closed by VCF.** Against
+  a Computer-Olympiad gold medalist the deployed coursework engine loses in 14-15 plies —
+  exactly what an external yardstick is for: a bound on where the project actually stands.
+- **The VCF module is the visible gap.** From ply 11 (game 1) and ply 10 (game 2),
+  cloudict's dedicated victory-by-continuous-forcing search announces `Win by VCF.` and
+  finishes in milliseconds. Section 7 documented this engine's lack of a dedicated
+  forced-win search as a design limitation; quiescence prices threats inside the horizon,
+  but at depth 3 it cannot chase a forcing line that runs four plies past it — the
+  fork exhibits of section 10 (found one ply early) are the same story at a scale the
+  deployment depth does not cover.
+- **Depth is the other half of the gap.** cloudict's searched moves cost 81,000-604,000
+  nodes at depth 6 — three plies deeper than the deployment depth 3, at 32-52x the
+  per-game node price. Its 46-second second move (604k nodes) and its 36-second opening
+  answer in game 2 are tactical homework our depth-3 trees do not see.
+- **The book bought exactly one move.** Game 1's `IIKK` came from the book; cloudict's
+  reply left the five recorded self-play lines, and in game 2 its opening answer `IJJI`
+  was never one of them. A self-play book is an opening dictionary, not an opponent
+  model — the section-10 caveat, demonstrated by a foreign engine.
+- **The engine's cost discipline held under an external lens.** 0.04-6.5 s and at most
+  19,197 nodes per move, the same order as the internal benchmarks' quiet-move costs
+  (section 11.3) — against an opponent paying 6-46 s per searched move.
+
+### 12.5 Conclusions
+
+1. The deployed engine's external position is 0-2 against cloudict, with the losses
+   traceable to two identified gaps — no dedicated forced-win search and a 3-vs-6 depth
+   deployment — rather than to the fundamentals: the protocol layer, the evaluation and
+   the candidate machinery hold up, and every game stays legal, coherent and cheap.
+2. Closing either gap is measurable with the same instruments. The candidate machinery
+   already surfaces the forcing lines a VCF search would walk (section 6's threat
+   ranking), and the depth knob is a single constant — the harness, the notebooks and
+   the cross-process referee of this chapter price either change end to end.
+3. The measurement itself is a deliverable: the referee speaks the shared wire protocol
+   to any external engine, across process boundaries, with determinism intact — two
+   independent runs of the fixture produced identical moves and node counts, so the
+   complete-record property of sections 9-11 holds against a foreign engine too.
+
+## 13. Deliverables — the reusable inventory
 
 The evaluation built more than an engine: it built the instruments that measured it. This
 closing chapter inventories the functionality, developed for the chapters above, that
 another project — or the next iteration of this one — can pick up and reuse. Every item
 points at the artefact that carries it; none of it needs to be taken on trust, only rerun.
 
-### 12.1 The engine as a library
+### 13.1 The engine as a library
 
 `connect6/` is importable as a package whose only import-time side effect is reading the
 weight file named by `WEIGHTS_FILE` (the champion, with the hand-tuned fallback). What the
@@ -1416,12 +1555,12 @@ package exports:
 - **One search loop, three searches** — min-max, alpha-beta and the enhanced variant share
   the single `_alpha_beta` loop behind two flags (`prune`, `enhanced`): a new variant is a
   flag away, not a fork.
-- **The opening book**, with parity position keys and silent fallback (12.4).
+- **The opening book**, with parity position keys and silent fallback (13.4).
 
 The reuse pattern is the one this repository uses everywhere — the test suite, the tuning
 scripts, the notebooks: pin `WEIGHTS_FILE`/`BOOK_FILE`, import, call.
 
-### 12.2 The tuning harness
+### 13.2 The tuning harness
 
 `tuning/harness.py` is the scaffolding the experiments of sections 9-11 stand on, factored
 out so the next experiment starts at the measurement instead of the plumbing:
@@ -1452,7 +1591,7 @@ print(record.winner, record.plies, record.black.nodes, record.white.nodes)
 The GA referee, the book generator and both measurement notebooks are thin layers over
 this one module.
 
-### 12.3 The genetic weight tuner
+### 13.3 The genetic weight tuner
 
 `tuning/genetic_tuner.py` is a small, seeded GA for any linear-weight evaluator:
 
@@ -1467,7 +1606,7 @@ Its public surface (`Weights`, `BASE`, `apply_weights`, `fmt`, `play_game`) is w
 `run_experiment.py` and the harness import; tuning a different evaluator is a matter of
 swapping the gene ranges and the repair bounds.
 
-### 12.4 The opening-book machinery
+### 13.4 The opening-book machinery
 
 `connect6/opening_book.py` plus `tuning/generate_opening_book.py`:
 
@@ -1480,23 +1619,28 @@ swapping the gene ranges and the repair bounds.
 - the generator produces books by self-play, configurable end to end (`--depth`,
   `--plies`, `--openings`, `--weights`, `--out`) — one command, about a minute.
 
-### 12.5 The benchmark notebooks
+### 13.5 The benchmark notebooks
 
-`benchmarks/` carries two patterns beyond its results:
+`benchmarks/` carries three patterns beyond its results:
 
 - **model-fitted scaling plots** — the depth notebooks estimate the per-node cost from the
   depth-1 measurement, then draw the theoretical `O(B^depth)` curve (and the ideal
   `O(B^(depth/2))` guide) through the measured points: the figure is the hypothesis test;
-- **assert-validated measurements** — the section-10/11 notebooks pin weights before
+- **assert-validated measurements** — the section-10/11/12 notebooks pin weights before
   importing the engine, print the documented tables, and assert every deterministic field
   (nodes, scores, moves, game outcomes, book hits) against this document. Executing the
   notebook *is* the validation; the stored outputs are executable documentation of the
   results.
+- **cross-engine refereeing over the wire** — the section-12 notebook drives any engine
+  that speaks the shared command set as a subprocess: a reader-thread referee relays
+  moves, mirrors the board with the package's own rules, parses the opponent's stats
+  dialect, and turns a hung process into a loud timeout. An external opponent is just
+  another measurement.
 
 Headless execution needs no IDE: `nbclient` with a kernelspec over the project venv reruns
 them from the command line — that is how their stored outputs were produced.
 
-### 12.6 The deterministic test suite
+### 13.6 The deterministic test suite
 
 `tests/test.py` — 79 tests over the whole pipeline in pipeline order — contributes two
 patterns worth copying:
