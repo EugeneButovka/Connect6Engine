@@ -126,6 +126,36 @@ QUIESCENCE_MIN_THREATS: Final = 3
 QUIESCENCE_WIDTH: Final = 8
 QUIESCENCE_DEPTH: Final = 6
 
+# VCF — the forced-win search of the deployed engine (v5): a narrow
+# recursion over forcing moves only. A threat window is a 6-window free of
+# defender stones; a five-window (5 attacker stones, 1 empty) forces the
+# defender to fill that exact empty, a four-window (4 stones, 2 empties)
+# forces one stone into either empty. The defender places two stones per
+# turn, so three or more uncovered windows lose at once, exactly two make
+# the reply fully determined — the chain's only sound continuation — and
+# one or fewer leaves the defender a free stone that can refute anything;
+# such branches are discarded, so every reported win is proven. VCF_PLY_CAP
+# bounds the chain length, VCF_NODE_CAP makes a pathological probe return
+# inconclusive instead of hanging the move.
+VCF_PLY_CAP: Final = 20
+VCF_NODE_CAP: Final = 1500
+
+# The v5 root: forced-win offense first, then the enhanced search deepened
+# deterministically while the cumulative node count stays under
+# V5_NODE_BUDGET (the budget is in nodes, not seconds, so reruns stay
+# exact; the started iteration may overshoot, but the next one never
+# starts), then a defense screen in two parts: the chosen move is
+# discarded if it hands the opponent a proven forced win, and it is also
+# discarded if it leaves the opponent an armed split pair — two of their
+# stones with a two-cell gap whose one-move join would force our entire
+# reply — falling back to the first screened root candidate (or a
+# constructed gap-breaking pair) that does not. V5_DEEPEN_STEPS is the
+# number of plies added to the floor depth (the protocol's depth
+# command); V5_SCREEN_WIDTH bounds the probed candidates.
+V5_NODE_BUDGET: Final = 12000
+V5_DEEPEN_STEPS: Final = 2
+V5_SCREEN_WIDTH: Final = 6
+
 # Lightweight hot-path companions of Position/Move: plain tuples so that
 # construction and hashing stay at C speed inside the search.
 Cell = tuple[int, int]  # (x, y)

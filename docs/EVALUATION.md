@@ -1531,14 +1531,166 @@ with it.
    independent runs of the fixture produced identical moves and node counts, so the
    complete-record property of sections 9-11 holds against a foreign engine too.
 
-## 13. Deliverables — the reusable inventory
+## 13. Closing the gap — what was tried against cloudict
+
+Section 12 ended with the external position stated plainly — 0-2 against cloudict, with two
+gaps named rather than excused: the engine had no dedicated forced-win search, and it was
+deployed three plies shallower than the opponent. This chapter is the record of the campaign
+that followed. Five attempts were built and measured; none changed the score, and the
+failures converged on a diagnosis this chapter states at the end. Both engines stayed
+deterministic throughout, so every rematch remained the complete fixture of section 12 — one
+game per color assignment, nothing sampled — and the campaign's move lists, timings and node
+counts are preserved with the campaign record. The chapter keeps to the narrative: what was
+tried, what it measured, what it means.
+
+### 13.1 The sound forced-win generation
+
+The first attempt built what section 7 had documented as missing: a dedicated
+victory-by-continuous-forcing search founded on the threat algebra of section 6 — a threat is
+a six-window free of defender stones, the defender places two stones per turn, so a position
+demanding three covers is a win no defense can meet. Forced wins that the tuned search reaches
+only after thousands of nodes fall out of this search in tens of them (the fork exhibit of
+section 10 resolves in seventeen; a completable five in one). It was wrapped in a root that
+deepens iteratively from the protocol depth while a fixed node budget lasts, and finished with
+a ranked defense screen: when the deepened best move leaves the opponent an armed split or a
+forced win, the root switches to the best candidate that does not, ranked by provable safety
+first and by how many enemy split pairs it disarms second.
+
+The generation won its internal ladder match 2-0 against the section-11 champion and became
+the engine's fifth generation, superseding the deployment configuration of section 12.
+Against cloudict it still lost 0-2 — but the character of the losses changed, and that change
+is the campaign's first result. The replay audit of section 12 had shown both original losses
+structurally decided before the final move; in the new games the loss was *certified* before
+the final move: the forced-win search proves the losing side had no survivable move left. The
+engine stopped donating games; it was being out-played. The screen also measurably disrupted
+the opponent once — at the point where cloudict's earlier wins had begun replaying a stored
+victory line in milliseconds, it was forced into a genuine 382,000-node, 33-second search
+before its winning announcement. Disruption, not denial: it rebuilt the attack and won, but
+the mechanism was real.
+
+Two audit findings framed everything that followed. First, the initiative audit: from ply 9
+of game 1 and ply 6 of game 2, every single engine move was the exact forced cover — a cover
+cost of exactly two, the whole move dictated. cloudict's mechanism is to build split pairs —
+two stones with a two-cell gap — and join them with one move into three or four simultaneous
+four-windows. That consumes the engine's entire move every turn while cloudict develops with
+its entire move; the initiative accumulates until a cover cost of three appears and the game
+ends. Second, the survivability analysis of the one free move that mattered — game 1, ply 7,
+the engine's last undictated choice: the position demanded three things (block a four-window
+about to complete, kill two armed split pairs) and a move places two stones. No legal move
+achieves all three; the engine's best still left one split armed, and so did every alternative
+of equal quality. The screen can choose among survivable moves; it cannot create freedom that
+does not exist.
+
+### 13.2 Deeper search
+
+The second lever from section 12.5 was depth. The node budget was raised so the deepening
+reached depth 5 on every board, not only the sparse ones. The score stayed 0-2 — and game 1
+collapsed in 18 plies, against 22 at the standard budget. The bind the opponent builds is
+positional, not a horizon artifact: searching the forced replies more deeply converges on the
+same forced covers. Depth amplifies what the evaluation already believes, and the evaluation
+was the thing being exploited. This result also set the shape of the budget the fifth
+generation ships: depth is bought only where the position is sparse enough to afford it, not
+as an unconditional bid.
+
+### 13.3 Reading the opponent
+
+With both levers of section 12.5 pulled and the score unchanged, the campaign turned to
+cloudict's source. Four findings, each verified in the code and where possible on the board:
+
+1. **Its search is ordinary.** Fixed depth 6, alpha-beta with move ordering. No
+   principal-variation search — the variable for it is computed and never used, dead code. No
+   transposition table, no quiescence, no iterative deepening, no time management. The gap of
+   section 12 is not in its search.
+2. **The strength is in move scoring and leaf evaluation.** The move generator prices enemy
+   structures at every node — including an explicit, hand-coded pattern for exactly the split
+   pairs that beat us, at a fixed modest score between its pair and live-three tiers, plus an
+   emergency blocker-first candidate width whenever an enemy four-threat appears. The leaf
+   evaluator classifies segment types and keeps crossing tables — pairs of intersecting live
+   structures, the precursors of forks — and flips its weight table depending on who holds
+   the initiative.
+3. **Its forced-win search is powerful and provably unsound.** A threat count above two is
+   scored as an immediate win regardless of whether one pair of covering stones can serve
+   several windows at once; the defender is modelled as blocking only; an empty defender list
+   falls through to a win. Winning announcements are then backed by a stored line replayed at
+   zero cost until the opponent deviates. (Its defensive counterpart to this search sits in
+   the source uninvoked — dead code in the deployed engine.)
+4. **The unsoundness was measured, not presumed.** At the rematch's first winning
+   announcement, the position held no forcing threats for cloudict at all: a sound probe of it
+   terminates exhaustively in one node, and a probe extended to join-started attacks takes
+   five and still finds no forced win. The announcement was not backed by a real forced win —
+   and cloudict won anyway. Unsoundness that buys tempo is still tempo.
+
+### 13.4 The transplants — three variants, three lessons
+
+The source study said the battle is in the candidate and evaluation layers, and the natural
+next move was to transplant cloudict's candidate-layer mechanisms into the engine's tree.
+Three variants were built and measured, each an isolated change:
+
+- **Root-level defense pool** — when the deepened best leaves an armed split or a forced loss,
+  re-rank from a pool that leads with emergency covers of enemy five/four windows, then enemy
+  split-gap cells paired with each other and crossed with the strongest ordinary cells
+  (cloudict's emergency width and split pricing, applied at the root). Verdict: inert.
+  Instrumentation of the rematch showed the deepened best was already provably safe at every
+  free ply, and the screen fired exactly once in thirty plies of play. The root's move list
+  was never the problem — the losses come from inside the tree. Notably, in this and every
+  attempt that left the tree's own scoring untouched, game 2 replayed identically: every move
+  a forced cover, nothing for any root-level mechanism to choose.
+- **Join pricing inside the tree, both colors** — the exact split-join geometry, at the exact
+  fixed score cloudict's own scorer assigns to it, added to every node's candidate scoring.
+  Verdict: it beat our own champion 2-0 — and lost to cloudict in fourteen and seventeen
+  plies, the black-side game collapsing eight plies sooner than the fifth generation's. The
+  engine began building split pairs of its own; a depth-6 engine with a situation evaluator
+  refutes our splits faster than it punishes our quiet development.
+- **Join pricing for the opponent only** — the defensive half alone, at every node. Verdict:
+  disqualified before the cloudict rematch: 0-2 against our own fourth-generation champion,
+  one game in nine plies. Priced only for the non-mover, the search's opponent model turns
+  paranoid — it assumes the enemy will spend its moves blocking our joins — and the search
+  then optimizes lines the real opponent never plays.
+
+The transferable lesson: the mechanisms do not survive separation from the evaluator that
+directs them. In cloudict they sit on top of a situation evaluator that prices crossing
+structures and flips its weights with the initiative; grafted onto this engine's linear
+evaluator they either over-commit our own development or corrupt the opponent model. The
+sixth-generation experiment was shelved accordingly — every variant reproducible, none
+shipped — and the fifth generation remains what the engine runs.
+
+### 13.5 Why the gap holds
+
+1. **The direct cause is a tempo bind.** Split pairs joined into three or four simultaneous
+   four-windows demand a cover cost of exactly two — our whole move — every turn, from the
+   opening on. The initiative audit shows it: from ply 9 in game 1, ply 6 in game 2, the
+   engine never made an unforced move again. At the one free move that mattered, the position
+   demanded more blocks than a move has stones.
+2. **The patterns are not the missing organ — the evaluator is.** Every faithful transplant of
+   cloudict's scoring patterns, at root level and inside the tree, symmetrically or for the
+   opponent only, left the score unchanged or made it worse. What the patterns need in order
+   to help is the layer beneath them: crossing-structure pricing and initiative-aware weights
+   that tell the engine *when* a split is worth building and *when* the tempo is there to
+   exploit one.
+3. **The compute ratio caps any fix.** cloudict searches at roughly 2.3 times our node speed;
+   its opening moves alone cost more nodes than our engine spends in an entire game. Equal
+   wall-clock is full-width depth 6 for it against budgeted depth 3-5 for us, whatever the
+   evaluation believes.
+4. **What the campaign established in the engine's favor.** The losses are honest: certified
+   lost before the final move, never a donated game. The engine's own winning announcements
+   are sound by construction — the same probe discipline that disproved cloudict's
+   announcements in one node certifies ours. The defense screen forced the opponent off its
+   zero-cost win-line script once, into a genuine 33-second search. And every shipped
+   generation preserved the internal ladder: 2-0 against the section-11 champion throughout.
+5. **What closing the gap would take.** The full transplant — a crossing-structure,
+   initiative-aware evaluation, re-tuned with the section-9 instruments — and behind it the
+   language-speed ratio that bounds how deeply any corrected judgment can search. The
+   sound forced-win layer, the cross-process referee and the candidate machinery are all in
+   place for that next iteration; that readiness is the deliverable this campaign adds.
+
+## 14. Deliverables — the reusable inventory
 
 The evaluation built more than an engine: it built the instruments that measured it. This
 closing chapter inventories the functionality, developed for the chapters above, that
 another project — or the next iteration of this one — can pick up and reuse. Every item
 points at the artefact that carries it; none of it needs to be taken on trust, only rerun.
 
-### 13.1 The engine as a library
+### 14.1 The engine as a library
 
 `connect6/` is importable as a package whose only import-time side effect is reading the
 weight file named by `WEIGHTS_FILE` (the champion, with the hand-tuned fallback). What the
@@ -1555,12 +1707,12 @@ package exports:
 - **One search loop, three searches** — min-max, alpha-beta and the enhanced variant share
   the single `_alpha_beta` loop behind two flags (`prune`, `enhanced`): a new variant is a
   flag away, not a fork.
-- **The opening book**, with parity position keys and silent fallback (13.4).
+- **The opening book**, with parity position keys and silent fallback (14.4).
 
 The reuse pattern is the one this repository uses everywhere — the test suite, the tuning
 scripts, the notebooks: pin `WEIGHTS_FILE`/`BOOK_FILE`, import, call.
 
-### 13.2 The tuning harness
+### 14.2 The tuning harness
 
 `tuning/harness.py` is the scaffolding the experiments of sections 9-11 stand on, factored
 out so the next experiment starts at the measurement instead of the plumbing:
@@ -1591,7 +1743,7 @@ print(record.winner, record.plies, record.black.nodes, record.white.nodes)
 The GA referee, the book generator and both measurement notebooks are thin layers over
 this one module.
 
-### 13.3 The genetic weight tuner
+### 14.3 The genetic weight tuner
 
 `tuning/genetic_tuner.py` is a small, seeded GA for any linear-weight evaluator:
 
@@ -1606,7 +1758,7 @@ Its public surface (`Weights`, `BASE`, `apply_weights`, `fmt`, `play_game`) is w
 `run_experiment.py` and the harness import; tuning a different evaluator is a matter of
 swapping the gene ranges and the repair bounds.
 
-### 13.4 The opening-book machinery
+### 14.4 The opening-book machinery
 
 `connect6/opening_book.py` plus `tuning/generate_opening_book.py`:
 
@@ -1619,7 +1771,7 @@ swapping the gene ranges and the repair bounds.
 - the generator produces books by self-play, configurable end to end (`--depth`,
   `--plies`, `--openings`, `--weights`, `--out`) — one command, about a minute.
 
-### 13.5 The benchmark notebooks
+### 14.5 The benchmark notebooks
 
 `benchmarks/` carries three patterns beyond its results:
 
@@ -1640,7 +1792,7 @@ swapping the gene ranges and the repair bounds.
 Headless execution needs no IDE: `nbclient` with a kernelspec over the project venv reruns
 them from the command line — that is how their stored outputs were produced.
 
-### 13.6 The deterministic test suite
+### 14.6 The deterministic test suite
 
 `tests/test.py` — 79 tests over the whole pipeline in pipeline order — contributes two
 patterns worth copying:

@@ -17,6 +17,7 @@ from connect6.candidates import generate_candidate_moves, _pair_correction
 from connect6.opening_book import book_move, position_key
 from connect6.threats import count_line_threats, count_move_threats
 from connect6.search import search_alpha_beta, search_alpha_beta_with_quiescence, search_min_max
+from connect6.vcf import find_forced_win, search_v5
 from connect6.defines import (
     ENGINE_NAME,
     GRID_NUM,
@@ -785,6 +786,143 @@ def test_forward_pruning_reduces_nodes_on_quiet_board():
 
 
 # ============================================================
+# V5 SEARCH TESTS (VCF + BUDGETED DEEPENING)
+# ============================================================
+
+def test_vcf_finds_fork_win():
+    board = create_fork_board()
+    stats = SearchStats()
+    win = find_forced_win(board, Color.BLACK, stats)
+    assert win is not None
+    threats = count_move_threats(
+        board,
+        win.positions[0].x,
+        win.positions[0].y,
+        win.positions[1].x,
+        win.positions[1].y,
+        Color.BLACK,
+    )
+    assert threats >= 3
+    assert stats.node_count <= 100
+    print("V5 Test 1 - VCF proves the fork position a forced win without a tree search: PASS")
+
+
+def test_vcf_completes_won_position():
+    board = create_forked_board()
+    stats = SearchStats()
+    win = find_forced_win(board, Color.BLACK, stats)
+    assert win is not None
+    assert stats.node_count == 1
+    make_move(board, win, Color.BLACK)
+    first = win.positions[0]
+    assert check_game_end(board, create_move_at(first.x, first.y)) == GameResult.WIN
+    print("V5 Test 2 - VCF finishes the completed fork in one node: PASS")
+
+
+def test_vcf_rejects_quiet_position():
+    board = create_quiet_board()
+    for color in (Color.BLACK, Color.WHITE):
+        stats = SearchStats()
+        assert find_forced_win(board, color, stats) is None
+        assert stats.node_count == 1
+    print("V5 Test 3 - VCF rejects a quiet position after one scan: PASS")
+
+
+def test_search_v5_plays_the_forced_win():
+    board = create_fork_board()
+    stats = SearchStats()
+    result = search_v5(board, Color.BLACK, 3, create_move_at(15, 5), stats)
+    assert result.score == MAXINT
+    assert stats.node_count <= 100
+    win = find_forced_win(board, Color.BLACK, SearchStats())
+    assert win is not None
+    assert placed_cells(result.move) == placed_cells(win)
+    print("V5 Test 4 - The v5 root plays the VCF win without building a tree: PASS")
+
+
+def test_search_v5_keeps_the_forced_block():
+    board = create_winnable_board()
+    stats = SearchStats()
+    result = search_v5(board, Color.WHITE, 3, create_move_at(10, 7), stats)
+    assert placed_cells(result.move) == {(10, 8), (10, 2)}
+    work = copy_board(board)
+    make_move(work, result.move, Color.WHITE)
+    assert find_forced_win(work, Color.BLACK, SearchStats()) is None
+    print("V5 Test 5 - The v5 root keeps the forced five-run block and the screen confirms it: PASS")
+
+
+def test_search_v5_deepens_under_budget():
+    board = create_quiet_board()
+    pre_move = create_move_at(3, 10)
+    single = SearchStats()
+    search_alpha_beta_with_quiescence(board, Color.WHITE, 2, pre_move, single)
+    deep = SearchStats()
+    search_v5(board, Color.WHITE, 2, pre_move, deep)
+    assert deep.node_count > single.node_count
+    print("V5 Test 6 - Budgeted deepening looks past the floor depth: PASS")
+
+
+def test_search_v5_is_deterministic():
+    board = create_quiet_board()
+    pre_move = create_move_at(3, 10)
+    first_stats, second_stats = SearchStats(), SearchStats()
+    first = search_v5(board, Color.WHITE, 2, pre_move, first_stats)
+    second = search_v5(board, Color.WHITE, 2, pre_move, second_stats)
+    assert placed_cells(first.move) == placed_cells(second.move)
+    assert first.score == second.score
+    assert first_stats.node_count == second_stats.node_count
+    print("V5 Test 7 - Identical inputs give identical v5 results: PASS")
+
+
+def test_search_v5_without_vcf_still_finds_the_fork():
+    board = create_fork_board()
+    stats = SearchStats()
+    result = search_v5(board, Color.BLACK, 3, create_move_at(15, 5), stats, use_vcf=False)
+    assert result.score == MAXINT
+    threats = count_move_threats(
+        board,
+        result.move.positions[0].x,
+        result.move.positions[0].y,
+        result.move.positions[1].x,
+        result.move.positions[1].y,
+        Color.BLACK,
+    )
+    assert threats >= 3
+    print("V5 Test 8 - With VCF off the deepened search still finds the fork: PASS")
+
+
+def test_vcf_toggles_flag():
+    engine = GameEngine()
+    assert engine.use_vcf is True
+    engine._cmd_unvcf("")
+    assert engine.use_vcf is False
+    engine._cmd_vcf("")
+    assert engine.use_vcf is True
+    print("V5 Test 9 - vcf/unvcf toggle the forced-win stage: PASS")
+
+
+def create_split_board():
+    board = create_empty_board()
+    board[10][4] = Color.WHITE
+    board[10][7] = Color.WHITE
+    board[13][13] = Color.BLACK
+    board[13][14] = Color.BLACK
+    return board
+
+
+def test_search_v5_preempts_armed_split():
+    board = create_split_board()
+    stats = SearchStats()
+    result = search_v5(board, Color.BLACK, 3, create_move_at(13, 14), stats)
+    cells = placed_cells(result.move)
+    assert cells & {(10, 5), (10, 6)}, cells
+    work = copy_board(board)
+    make_move(work, result.move, Color.BLACK)
+    assert find_forced_win(work, Color.WHITE, SearchStats()) is None
+    print("V5 Test 10 - The screen preempts an armed split pair instead of developing: PASS")
+
+
+# ============================================================
 # OPENING BOOK TESTS
 # ============================================================
 
@@ -1151,6 +1289,18 @@ if __name__ == "__main__":
     test_enhanced_blocks_live_four()
     test_enhanced_blocks_live_five()
     test_forward_pruning_reduces_nodes_on_quiet_board()
+
+    print("\n========== V5 SEARCH TESTS (VCF + BUDGETED DEEPENING) ==========\n")
+    test_vcf_finds_fork_win()
+    test_vcf_completes_won_position()
+    test_vcf_rejects_quiet_position()
+    test_search_v5_plays_the_forced_win()
+    test_search_v5_keeps_the_forced_block()
+    test_search_v5_deepens_under_budget()
+    test_search_v5_is_deterministic()
+    test_search_v5_without_vcf_still_finds_the_fork()
+    test_vcf_toggles_flag()
+    test_search_v5_preempts_armed_split()
 
     print("\n========== OPENING BOOK TESTS ==========\n")
     test_position_key_is_stone_inventory()

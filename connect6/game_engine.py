@@ -17,7 +17,7 @@ from .defines import (
 )
 from .opening_book import book_move, load_opening_book
 from .protocol import color_to_name, log_command, log_error, move2msg, msg2move, print_board
-from .search import search_alpha_beta_with_quiescence
+from .vcf import search_v5
 
 
 def _flush_output() -> None:
@@ -30,6 +30,7 @@ class GameEngine:
         if len(name) >= MSG_LENGTH:
             print(f"Too long Engine Name: {name}, should be less than: {MSG_LENGTH}", file=sys.stderr)
         self.search_depth = SEARCH_DEPTH
+        self.use_vcf = True
         self.color: Color | None = None
         self.board: Board = [[0] * GRID_NUM for _ in range(GRID_NUM)]
         self.last_move = Move((Position(0, 0), Position(0, 0)))
@@ -105,7 +106,7 @@ class GameEngine:
             return self._announce_end(end_result, color, "AI")
         stats = SearchStats()
         start = time.perf_counter()
-        result = search_alpha_beta_with_quiescence(self.board, color, self.search_depth, pre_move, stats)
+        result = search_v5(self.board, color, self.search_depth, pre_move, stats, self.use_vcf)
         end = time.perf_counter()
 
         print(f"Search Time:\t{end - start:.3f}")
@@ -148,9 +149,11 @@ class GameEngine:
         return False
 
     def _cmd_vcf(self, msg: str) -> bool:
+        self.use_vcf = True
         return True
 
     def _cmd_unvcf(self, msg: str) -> bool:
+        self.use_vcf = False
         return True
 
     def _cmd_black(self, msg: str) -> bool:
