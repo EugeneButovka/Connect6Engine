@@ -32,6 +32,31 @@ def search_alpha_beta_with_quiescence(board: Board, color: Color, depth: int, pr
     return _search(board, color, depth, pre_move, stats, prune=True, enhanced=True)
 
 
+def search_candidate_subtree(
+    board: Board,
+    color: Color,
+    depth: int,
+    candidate: Move,
+    incoming: int,
+    stats: SearchStats,
+) -> SearchResult:
+    work = copy_board(board)
+    make_move(work, candidate, color)
+    return _alpha_beta(
+        depth - 1,
+        work,
+        opponent(color),
+        candidate,
+        stats,
+        MININT,
+        MAXINT,
+        True,
+        True,
+        1,
+        incoming if incoming > 0 else 0,
+    )
+
+
 def _search(board: Board, color: Color, depth: int, pre_move: Move, stats: SearchStats, prune: bool, enhanced: bool = False) -> SearchResult:
     working_board = copy_board(board)
     if is_board_empty(working_board):

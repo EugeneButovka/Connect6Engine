@@ -156,6 +156,37 @@ V5_NODE_BUDGET: Final = 12000
 V5_DEEPEN_STEPS: Final = 2
 V5_SCREEN_WIDTH: Final = 6
 
+# The v6 root: the v5 pipeline with the root split across worker processes.
+# Every root candidate is searched as its own full-window alpha-beta subtree,
+# so no sibling bounds are shared and the per-candidate values are exact; the
+# argmax over the fixed candidate list (first best wins ties) is therefore
+# identical to the shared-window root at the same depth, while the node count
+# is a pure sum over the list — move, score and nodes stay the same at any
+# worker count. The price is the sibling cutoffs the shared window used to
+# harvest: measured on the common trajectory the split spends 1.9-14.5x the
+# sequential nodes at the floor depth (the ratio is position-dependent — the
+# more the root bounds pruned, the more the split pays), so the fixed-mode
+# deepening budget scales V5_NODE_BUDGET by three: the floor iteration
+# (max ~20k split nodes on the trajectory) always fits, and the depth-4
+# iteration (30-90k) exhausts it, which is v5's own stop pattern. Fixed mode
+# (budget unset) is therefore v5's player wherever both engines make the same
+# deepening decision, and differs exactly where the split's different node
+# economics move that boundary. Budget mode (the deployment) deepens by wall
+# time instead: iterations run while the next depth is predicted to fit, the
+# prediction being the last iteration's wall times V6_GROWTH_FACTOR (the
+# measured per-depth wall growth is up to ~17x, so 12 leaves a margin), and
+# the best fully-completed depth answers by V6_TIME_BUDGET seconds; an
+# iteration started against the deadline contributes only candidates that
+# finished, and a proven win anywhere is taken at once. The number of workers
+# is all logical cores (V6_JOBS, environment-overridable, jobs=1 runs the
+# same split inline with no pool). The depth command of the protocol is the
+# floor of both modes.
+V6_NODE_BUDGET: Final = 36000
+V6_TIME_BUDGET: Final = 28.0
+V6_GROWTH_FACTOR: Final = 12.0
+V6_JOBS_ENV: Final = "V6_JOBS"
+V6_TIME_BUDGET_ENV: Final = "V6_TIME_BUDGET"
+
 # Lightweight hot-path companions of Position/Move: plain tuples so that
 # construction and hashing stay at C speed inside the search.
 Cell = tuple[int, int]  # (x, y)
@@ -204,3 +235,4 @@ class SearchResult:
 @dataclass(slots=True)
 class SearchStats:
     node_count: int = 0
+    depth_reached: int = 0

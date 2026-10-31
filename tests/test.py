@@ -1,28 +1,35 @@
 import io
 import os
 import select
+import signal
 import subprocess
 import sys
+import time
 from contextlib import redirect_stdout
 from pathlib import Path
 
 os.environ["WEIGHTS_FILE"] = str(Path(__file__).resolve().parents[1] / "tuning" / "default.json")
 os.environ["BOOK_FILE"] = str(Path(__file__).resolve().parents[1] / "tuning" / "no_book.json")
+os.environ["V6_TIME_BUDGET"] = "0.5"
+os.environ["V6_JOBS"] = "2"
 
 from connect6.board import init_board, _is_board_full, _is_win_by_move, check_game_end, copy_board, opponent, make_move
 from connect6.game_engine import GameEngine
 from connect6.protocol import color_to_name, move2msg, msg2move
 from connect6.evaluation import evaluate, _score_living_sets
-from connect6.candidates import generate_candidate_moves, _pair_correction
+from connect6.candidates import generate_candidate_moves, generate_scored_candidate_moves, _pair_correction
 from connect6.opening_book import book_move, position_key
 from connect6.threats import count_line_threats, count_move_threats
-from connect6.search import search_alpha_beta, search_alpha_beta_with_quiescence, search_min_max
+from connect6.search import search_alpha_beta, search_alpha_beta_with_quiescence, search_candidate_subtree, search_min_max
 from connect6.vcf import find_forced_win, search_v5
+from connect6.parallel import search_v6
 from connect6.defines import (
     ENGINE_NAME,
+    FORWARD_WIDTHS,
     GRID_NUM,
     SetWeight,
     THREAT_WIN,
+    V6_JOBS_ENV,
     MAXINT,
     MAX_CANDIDATE_MOVES,
     MININT,
@@ -923,6 +930,135 @@ def test_search_v5_preempts_armed_split():
 
 
 # ============================================================
+# V6 SEARCH TESTS (PARALLEL ROOT SPLIT + WALL-TIME BUDGET)
+# ============================================================
+
+def test_v6_split_matches_shared_window():
+    cases = [
+        (create_quiet_board(), Color.WHITE, create_move_at(3, 10)),
+        (create_fork_board(), Color.BLACK, create_move_at(15, 5)),
+        (create_split_board(), Color.BLACK, create_move_at(13, 14)),
+        (create_winnable_board(), Color.WHITE, create_move_at(10, 7)),
+    ]
+    for board, color, pre_move in cases:
+        shared = search_alpha_beta_with_quiescence(board, color, 3, pre_move, SearchStats())
+        candidates, threats = generate_scored_candidate_moves(board, FORWARD_WIDTHS[0], color)
+        maximizing = color == Color.BLACK
+        best_score = MININT if maximizing else MAXINT
+        best_move = candidates[0]
+        for candidate, threat in zip(candidates, threats):
+            result = search_candidate_subtree(board, color, 3, candidate, threat, SearchStats())
+            if maximizing and result.score > best_score:
+                best_score, best_move = result.score, candidate
+            if not maximizing and result.score < best_score:
+                best_score, best_move = result.score, candidate
+        assert placed_cells(best_move) == placed_cells(shared.move), (color, pre_move)
+        assert best_score == shared.score, (color, pre_move)
+    print("V6 Test 1 - The root split picks the shared-window root's move and score at equal depth: PASS")
+
+
+def test_search_v6_plays_the_forced_win():
+    board = create_fork_board()
+    stats = SearchStats()
+    result = search_v6(board, Color.BLACK, 3, create_move_at(15, 5), stats)
+    win = find_forced_win(board, Color.BLACK, SearchStats())
+    assert result.score == MAXINT
+    assert stats.node_count <= 100
+    assert win is not None
+    assert placed_cells(result.move) == placed_cells(win)
+    print("V6 Test 2 - The v6 root plays the VCF win without building a tree: PASS")
+
+
+def test_search_v6_fixed_agrees_with_v5():
+    board = create_quiet_board()
+    pre_move = create_move_at(3, 10)
+    v5_stats, v6_stats = SearchStats(), SearchStats()
+    v5 = search_v5(board, Color.WHITE, 2, pre_move, v5_stats)
+    os.environ[V6_JOBS_ENV] = "1"
+    try:
+        v6 = search_v6(board, Color.WHITE, 2, pre_move, v6_stats)
+    finally:
+        os.environ[V6_JOBS_ENV] = "2"
+    assert placed_cells(v6.move) == placed_cells(v5.move)
+    assert v6.score == v5.score
+    assert v6_stats.depth_reached == 4
+    print("V6 Test 3 - Fixed v6 agrees with v5 where both deepening budgets allow the same depths: PASS")
+
+
+def test_search_v6_is_jobs_invariant():
+    board = create_winnable_board()
+    pre_move = create_move_at(10, 7)
+    stats_one, stats_again, stats_pooled = SearchStats(), SearchStats(), SearchStats()
+    os.environ[V6_JOBS_ENV] = "1"
+    try:
+        first = search_v6(board, Color.WHITE, 3, pre_move, stats_one)
+        second = search_v6(board, Color.WHITE, 3, pre_move, stats_again)
+    finally:
+        os.environ[V6_JOBS_ENV] = "3"
+    try:
+        third = search_v6(board, Color.WHITE, 3, pre_move, stats_pooled)
+    finally:
+        os.environ[V6_JOBS_ENV] = "2"
+    assert placed_cells(first.move) == placed_cells(second.move) == placed_cells(third.move)
+    assert first.score == second.score == third.score
+    assert stats_one.node_count == stats_again.node_count == stats_pooled.node_count
+    print("V6 Test 4 - The answer is identical at one, three and pooled workers: PASS")
+
+
+def test_search_v6_budget_answers_within_the_cap():
+    board = create_quiet_board()
+    pre_move = create_move_at(3, 10)
+    stats = SearchStats()
+    started = time.perf_counter()
+    result = search_v6(board, Color.WHITE, 3, pre_move, stats, True, 0.25)
+    wall = time.perf_counter() - started
+    assert wall < 5.0, wall
+    work = copy_board(board)
+    assert all(work[x][y] == NOSTONE for x, y in placed_cells(result.move))
+    assert stats.depth_reached >= 3
+    print("V6 Test 5 - A tight budget still answers with a legal move at the floor depth: PASS")
+
+
+def test_search_v6_budget_deepens_past_the_floor():
+    board = create_quiet_board()
+    pre_move = create_move_at(3, 10)
+    stats = SearchStats()
+    started = time.perf_counter()
+    search_v6(board, Color.WHITE, 2, pre_move, stats, True, 8.0)
+    wall = time.perf_counter() - started
+    assert stats.depth_reached >= 3, stats.depth_reached
+    assert wall <= 12.0, wall
+    print("V6 Test 6 - The wall-time budget deepens past the floor depth while it fits: PASS")
+
+
+def test_search_v6_without_vcf_still_finds_the_fork():
+    board = create_fork_board()
+    stats = SearchStats()
+    result = search_v6(board, Color.BLACK, 3, create_move_at(15, 5), stats, use_vcf=False)
+    assert result.score == MAXINT
+    threats = count_move_threats(
+        board,
+        result.move.positions[0].x,
+        result.move.positions[0].y,
+        result.move.positions[1].x,
+        result.move.positions[1].y,
+        Color.BLACK,
+    )
+    assert threats >= 3
+    print("V6 Test 7 - With VCF off the deepened search still finds the fork: PASS")
+
+
+def test_search_v6_preempts_armed_split():
+    board = create_split_board()
+    stats = SearchStats()
+    result = search_v6(board, Color.BLACK, 3, create_move_at(13, 14), stats)
+    work = copy_board(board)
+    make_move(work, result.move, Color.BLACK)
+    assert find_forced_win(work, Color.WHITE, SearchStats()) is None
+    print("V6 Test 8 - The parallel screen never hands the opponent a proven forced win: PASS")
+
+
+# ============================================================
 # OPENING BOOK TESTS
 # ============================================================
 
@@ -1005,6 +1141,7 @@ class ProtocolEngine:
             stderr=subprocess.PIPE,
             bufsize=0,
             cwd=PROJECT_ROOT,
+            start_new_session=True,
         )
         assert self.proc.stdin is not None
         assert self.proc.stdout is not None
@@ -1040,7 +1177,10 @@ class ProtocolEngine:
 
     def close(self):
         self.stdin.close()
-        self.proc.terminate()
+        try:
+            os.killpg(self.proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
         self.proc.wait(timeout=10)
         return self.stderr.read().decode()
 
@@ -1301,6 +1441,16 @@ if __name__ == "__main__":
     test_search_v5_without_vcf_still_finds_the_fork()
     test_vcf_toggles_flag()
     test_search_v5_preempts_armed_split()
+
+    print("\n========== V6 SEARCH TESTS (PARALLEL ROOT SPLIT + WALL-TIME BUDGET) ==========\n")
+    test_v6_split_matches_shared_window()
+    test_search_v6_plays_the_forced_win()
+    test_search_v6_fixed_agrees_with_v5()
+    test_search_v6_is_jobs_invariant()
+    test_search_v6_budget_answers_within_the_cap()
+    test_search_v6_budget_deepens_past_the_floor()
+    test_search_v6_without_vcf_still_finds_the_fork()
+    test_search_v6_preempts_armed_split()
 
     print("\n========== OPENING BOOK TESTS ==========\n")
     test_position_key_is_stone_inventory()

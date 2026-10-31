@@ -1,0 +1,4881 @@
+[
+ {
+  "opening": "IIKK",
+  "ours_color": "black",
+  "depth": 3,
+  "winner": "white",
+  "plies": 10,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "IIKK"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JKLJ",
+    "wall": 0.0,
+    "book": true
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KJKI",
+    "wall": 0.096,
+    "nodes": 2760,
+    "score": 807.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JIJL",
+    "wall": 9.159,
+    "nodes": 284721,
+    "score": 372.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JHJM",
+    "wall": 0.028,
+    "nodes": 373,
+    "score": 1003.9
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KLIJ",
+    "wall": 9.685,
+    "nodes": 305388,
+    "score": 206.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KGHJ",
+    "wall": 0.004
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KHKF",
+    "wall": 0.007,
+    "nodes": 106,
+    "score": -20000.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MELF",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "IIKK",
+  "ours_color": "white",
+  "depth": 3,
+  "winner": "black",
+  "plies": 23,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "IIKK"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JKJL",
+    "wall": 0.139,
+    "nodes": 3821,
+    "score": 809.3
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JMIL",
+    "wall": 8.291,
+    "nodes": 285782,
+    "score": -79.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IKHK",
+    "wall": 0.096,
+    "nodes": 2862,
+    "score": 1110.6
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "HJHL",
+    "wall": 7.483,
+    "nodes": 232318,
+    "score": -142.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GKJI",
+    "wall": 1.0,
+    "nodes": 1567,
+    "score": 1214.2
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JHFK",
+    "wall": 7.184,
+    "nodes": 36179,
+    "score": 395.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KJIJ",
+    "wall": 0.09,
+    "nodes": 2350,
+    "score": 1109.7
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GLHM",
+    "wall": 4.431,
+    "nodes": 122058,
+    "score": 18.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GHHI",
+    "wall": 2.591
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KLFG",
+    "wall": 11.224,
+    "nodes": 59275,
+    "score": -687.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "MLLK",
+    "wall": 0.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "ours",
+    "msg": "IHNM",
+    "wall": 3.867,
+    "nodes": 32013,
+    "score": -192.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KHMJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LJLG",
+    "wall": 8.262,
+    "nodes": 53781,
+    "score": -703.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "NKLI",
+    "wall": 0.0
+   },
+   {
+    "ply": 18,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JGOL",
+    "wall": 5.266,
+    "nodes": 56552,
+    "score": -1139.0
+   },
+   {
+    "ply": 19,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "PIOJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 20,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LMQH",
+    "wall": 4.896,
+    "nodes": 38236,
+    "score": -1248.0
+   },
+   {
+    "ply": 21,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "MHMI",
+    "wall": 0.0
+   },
+   {
+    "ply": 22,
+    "color": "white",
+    "engine": "ours",
+    "msg": "MKMG",
+    "wall": 0.107,
+    "nodes": 1105,
+    "score": 20000.0
+   },
+   {
+    "ply": 23,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "OFNG",
+    "wall": 0.005
+   }
+  ]
+ },
+ {
+  "opening": "JKLJ",
+  "ours_color": "black",
+  "depth": 3,
+  "winner": "white",
+  "plies": 20,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JKLJ"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KKJI",
+    "wall": 4.83,
+    "nodes": 176630,
+    "score": 282.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LLKL",
+    "wall": 0.079,
+    "nodes": 2154,
+    "score": 811.5
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LKKJ",
+    "wall": 10.45,
+    "nodes": 333242,
+    "score": 244.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NLML",
+    "wall": 0.828
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JLOL",
+    "wall": 4.774,
+    "nodes": 25710,
+    "score": -30.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "OMMK",
+    "wall": 0.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KIPN",
+    "wall": 6.014,
+    "nodes": 55250,
+    "score": 243.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MIMJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "MMMH",
+    "wall": 6.748,
+    "nodes": 37053,
+    "score": 288.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MNLM",
+    "wall": 0.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IJNO",
+    "wall": 9.487,
+    "nodes": 49225,
+    "score": 214.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NKKN",
+    "wall": 0.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "ours",
+    "msg": "OJJO",
+    "wall": 8.197,
+    "nodes": 44780,
+    "score": 716.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "OINJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KMPH",
+    "wall": 0.036,
+    "nodes": 309,
+    "score": -20000.0
+   },
+   {
+    "ply": 18,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NIPI",
+    "wall": 0.0
+   },
+   {
+    "ply": 19,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LIQI",
+    "wall": 0.004,
+    "nodes": 62,
+    "score": -20000.0
+   },
+   {
+    "ply": 20,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NGNH",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "JKLJ",
+  "ours_color": "white",
+  "depth": 3,
+  "winner": "black",
+  "plies": 13,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JKLJ"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IKKI",
+    "wall": 0.084,
+    "nodes": 2538,
+    "score": 811.2
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LHMI",
+    "wall": 6.912,
+    "nodes": 251971,
+    "score": -168.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "HLKK",
+    "wall": 0.058,
+    "nodes": 1654,
+    "score": 1105.5
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GMKG",
+    "wall": 7.919,
+    "nodes": 228137,
+    "score": -188.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "HHII",
+    "wall": 0.648
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GGLL",
+    "wall": 4.608,
+    "nodes": 32730,
+    "score": -243.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IHIJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "ILIG",
+    "wall": 3.648,
+    "nodes": 17530,
+    "score": -18.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "FHGH",
+    "wall": 0.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "HJGI",
+    "wall": 8.753,
+    "nodes": 30303,
+    "score": 88.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "DHEH",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "KJKI",
+  "ours_color": "black",
+  "depth": 3,
+  "winner": "white",
+  "plies": 32,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KJKI"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KKLJ",
+    "wall": 6.265,
+    "nodes": 251985,
+    "score": 248.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JLLL",
+    "wall": 0.096,
+    "nodes": 2715,
+    "score": 807.9
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KLJK",
+    "wall": 8.006,
+    "nodes": 284408,
+    "score": 197.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "HKHI",
+    "wall": 0.084,
+    "nodes": 2479,
+    "score": 812.3
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LKJI",
+    "wall": 22.883,
+    "nodes": 704218,
+    "score": 479.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "HJHH",
+    "wall": 0.082,
+    "nodes": 1719,
+    "score": 1109.3
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "HGHL",
+    "wall": 13.907,
+    "nodes": 158584,
+    "score": -215.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "IKKM",
+    "wall": 0.08,
+    "nodes": 2394,
+    "score": 718.7
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "GILN",
+    "wall": 14.961,
+    "nodes": 82051,
+    "score": -440.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MKJN",
+    "wall": 0.054,
+    "nodes": 1593,
+    "score": 1138.6
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "NJIO",
+    "wall": 4.863,
+    "nodes": 22086,
+    "score": -99.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JMIL",
+    "wall": 0.125,
+    "nodes": 2633,
+    "score": 1128.7
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "ours",
+    "msg": "GJJH",
+    "wall": 8.945,
+    "nodes": 236229,
+    "score": -97.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JFGK",
+    "wall": 0.112,
+    "nodes": 2372,
+    "score": 1126.5
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KNJO",
+    "wall": 7.029,
+    "nodes": 158645,
+    "score": -161.0
+   },
+   {
+    "ply": 18,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LMMM",
+    "wall": 0.119,
+    "nodes": 1693,
+    "score": 1133.4
+   },
+   {
+    "ply": 19,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IMNM",
+    "wall": 3.978,
+    "nodes": 15364,
+    "score": 85.0
+   },
+   {
+    "ply": 20,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "EKFL",
+    "wall": 0.164,
+    "nodes": 3951,
+    "score": 1126.0
+   },
+   {
+    "ply": 21,
+    "color": "black",
+    "engine": "ours",
+    "msg": "FKIH",
+    "wall": 2.703,
+    "nodes": 49251,
+    "score": -9.0
+   },
+   {
+    "ply": 22,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "DNEM",
+    "wall": 1.164
+   },
+   {
+    "ply": 23,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IICO",
+    "wall": 8.138,
+    "nodes": 32160,
+    "score": 118.0
+   },
+   {
+    "ply": 24,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "ENEL",
+    "wall": 0.0
+   },
+   {
+    "ply": 25,
+    "color": "black",
+    "engine": "ours",
+    "msg": "EJEO",
+    "wall": 12.753,
+    "nodes": 46240,
+    "score": 49.0
+   },
+   {
+    "ply": 26,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "FNCN",
+    "wall": 0.0
+   },
+   {
+    "ply": 27,
+    "color": "black",
+    "engine": "ours",
+    "msg": "BNGN",
+    "wall": 28.026,
+    "nodes": 9084,
+    "score": 32.0
+   },
+   {
+    "ply": 28,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "DLGO",
+    "wall": 0.0
+   },
+   {
+    "ply": 29,
+    "color": "black",
+    "engine": "ours",
+    "msg": "CKHP",
+    "wall": 3.367,
+    "nodes": 12580,
+    "score": -62.0
+   },
+   {
+    "ply": 30,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "DKDM",
+    "wall": 0.0
+   },
+   {
+    "ply": 31,
+    "color": "black",
+    "engine": "ours",
+    "msg": "DJDI",
+    "wall": 1.576,
+    "nodes": 6275,
+    "score": -20000.0
+   },
+   {
+    "ply": 32,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "DPDO",
+    "wall": 0.005
+   }
+  ]
+ },
+ {
+  "opening": "KJKI",
+  "ours_color": "white",
+  "depth": 3,
+  "winner": "black",
+  "plies": 15,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KJKI"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KKII",
+    "wall": 0.076,
+    "nodes": 2261,
+    "score": 813.4
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "HHLJ",
+    "wall": 6.324,
+    "nodes": 247240,
+    "score": -167.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JHJI",
+    "wall": 0.085,
+    "nodes": 2378,
+    "score": 1108.5
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JKHJ",
+    "wall": 5.158,
+    "nodes": 167465,
+    "score": -79.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IJJG",
+    "wall": 0.098,
+    "nodes": 2194,
+    "score": 1113.9
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JFIH",
+    "wall": 3.42,
+    "nodes": 98970,
+    "score": 206.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "HKGL",
+    "wall": 0.196,
+    "nodes": 1812,
+    "score": 1121.2
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KHFM",
+    "wall": 24.27,
+    "nodes": 112832,
+    "score": 66.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "LLIL",
+    "wall": 0.09,
+    "nodes": 2278,
+    "score": 1119.7
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "MMKG",
+    "wall": 7.707,
+    "nodes": 183534,
+    "score": -110.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KEIN",
+    "wall": 0.095,
+    "nodes": 2265,
+    "score": 1128.4
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JLKL",
+    "wall": 4.965,
+    "nodes": 114844,
+    "score": -991.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IMIK",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "KLJI",
+  "ours_color": "black",
+  "depth": 3,
+  "winner": "white",
+  "plies": 16,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KLJI"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KIIJ",
+    "wall": 5.023,
+    "nodes": 198964,
+    "score": 296.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "HLKJ",
+    "wall": 0.091,
+    "nodes": 2562,
+    "score": 810.4
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "ILJL",
+    "wall": 14.34,
+    "nodes": 437110,
+    "score": 383.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MLLK",
+    "wall": 0.24
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IHNM",
+    "wall": 8.134,
+    "nodes": 72972,
+    "score": -291.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MJJM",
+    "wall": 0.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "NIIN",
+    "wall": 10.532,
+    "nodes": 66614,
+    "score": -305.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MIMK",
+    "wall": 0.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "MHMM",
+    "wall": 3.572,
+    "nodes": 25844,
+    "score": -759.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "OKNK",
+    "wall": 0.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KKPK",
+    "wall": 0.057,
+    "nodes": 378,
+    "score": -20000.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "PLNJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LHKG",
+    "wall": 0.694,
+    "nodes": 4896,
+    "score": -20000.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "RNQM",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "KLJI",
+  "ours_color": "white",
+  "depth": 3,
+  "winner": "black",
+  "plies": 15,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KLJI"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KKII",
+    "wall": 0.121,
+    "nodes": 3297,
+    "score": 814.5
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LLIJ",
+    "wall": 7.121,
+    "nodes": 262598,
+    "score": -177.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "HKHH",
+    "wall": 0.095,
+    "nodes": 2469,
+    "score": 1099.7
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GGJK",
+    "wall": 7.955,
+    "nodes": 214908,
+    "score": -282.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "HIHJ",
+    "wall": 0.065
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "HGHL",
+    "wall": 5.177,
+    "nodes": 28837,
+    "score": -72.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KGJH",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GKLF",
+    "wall": 9.502,
+    "nodes": 54247,
+    "score": -17.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KHIH",
+    "wall": 0.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GHLH",
+    "wall": 4.141,
+    "nodes": 34338,
+    "score": 6912.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KFJG",
+    "wall": 0.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GJLE",
+    "wall": 4.9,
+    "nodes": 45179,
+    "score": 972.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KIKJ",
+    "wall": 0.005
+   }
+  ]
+ },
+ {
+  "opening": "JLIJ",
+  "ours_color": "black",
+  "depth": 3,
+  "winner": "white",
+  "plies": 12,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JLIJ"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IKKJ",
+    "wall": 5.285,
+    "nodes": 177620,
+    "score": 282.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "HLHK",
+    "wall": 0.082,
+    "nodes": 2159,
+    "score": 811.5
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "ILJK",
+    "wall": 11.987,
+    "nodes": 333621,
+    "score": 244.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "HJHM",
+    "wall": 0.448
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "HIHN",
+    "wall": 3.861,
+    "nodes": 21169,
+    "score": 244.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "FMGL",
+    "wall": 0.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JIEN",
+    "wall": 5.349,
+    "nodes": 28338,
+    "score": 176.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "EMGM",
+    "wall": 0.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IMJM",
+    "wall": 2.77,
+    "nodes": 12371,
+    "score": -20000.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "CMDM",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "JLIJ",
+  "ours_color": "white",
+  "depth": 3,
+  "winner": "black",
+  "plies": 17,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JLIJ"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KKII",
+    "wall": 0.076,
+    "nodes": 2486,
+    "score": 811.2
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "HHJI",
+    "wall": 6.674,
+    "nodes": 235650,
+    "score": -128.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "LGLH",
+    "wall": 0.113,
+    "nodes": 2927,
+    "score": 1108.5
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LLHI",
+    "wall": 2.856,
+    "nodes": 76672,
+    "score": 55.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IKKI",
+    "wall": 1.236
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "MGHL",
+    "wall": 15.716,
+    "nodes": 121425,
+    "score": 119.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "HKJK",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GKLK",
+    "wall": 7.835,
+    "nodes": 72637,
+    "score": 204.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KLKJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KMKH",
+    "wall": 3.88,
+    "nodes": 16915,
+    "score": 32.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "MHLI",
+    "wall": 0.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "ours",
+    "msg": "ILNG",
+    "wall": 3.683,
+    "nodes": 17204,
+    "score": 33.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "OJNI",
+    "wall": 0.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KFJE",
+    "wall": 0.286,
+    "nodes": 2088,
+    "score": 20000.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "QLPK",
+    "wall": 0.005
+   }
+  ]
+ },
+ {
+  "opening": "JHLH",
+  "ours_color": "black",
+  "depth": 3,
+  "winner": "white",
+  "plies": 14,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JHLH"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KIIJ",
+    "wall": 7.004,
+    "nodes": 184403,
+    "score": 282.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "HJII",
+    "wall": 0.11,
+    "nodes": 2813,
+    "score": 1007.7
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KGLI",
+    "wall": 17.241,
+    "nodes": 306002,
+    "score": 232.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "GKIK",
+    "wall": 0.1,
+    "nodes": 2242,
+    "score": 1210.8
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "FLKH",
+    "wall": 3.563,
+    "nodes": 52693,
+    "score": -74.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "FHGI",
+    "wall": 2.491
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JLEG",
+    "wall": 13.36,
+    "nodes": 54204,
+    "score": 425.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "GHGJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "GLGG",
+    "wall": 5.431,
+    "nodes": 31735,
+    "score": -210.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "EHHH",
+    "wall": 0.001
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "HLIL",
+    "wall": 0.005,
+    "nodes": 2,
+    "score": 20000.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "CHDH",
+    "wall": 0.011
+   }
+  ]
+ },
+ {
+  "opening": "JHLH",
+  "ours_color": "white",
+  "depth": 3,
+  "winner": "black",
+  "plies": 11,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JHLH"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "HHII",
+    "wall": 0.082,
+    "nodes": 2723,
+    "score": 813.4
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KKKG",
+    "wall": 8.393,
+    "nodes": 248715,
+    "score": -83.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GGGI",
+    "wall": 0.056,
+    "nodes": 1598,
+    "score": 1209.8
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "FFLG",
+    "wall": 9.034,
+    "nodes": 254007,
+    "score": -204.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GFGH",
+    "wall": 0.47
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GEGJ",
+    "wall": 7.607,
+    "nodes": 37160,
+    "score": 103.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "FIHI",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JIKI",
+    "wall": 0.123,
+    "nodes": 484,
+    "score": 20000.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "DIEI",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "IIKK",
+  "ours_color": "black",
+  "depth": 4,
+  "winner": "white",
+  "plies": 18,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "IIKK"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JKLJ",
+    "wall": 0.0,
+    "book": true
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KJJH",
+    "wall": 0.677,
+    "nodes": 11614,
+    "score": 801.5
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JIJL",
+    "wall": 8.035,
+    "nodes": 264924,
+    "score": 204.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JMHJ",
+    "wall": 0.548,
+    "nodes": 8868,
+    "score": 1101.3
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KGIK",
+    "wall": 8.323,
+    "nodes": 247434,
+    "score": 278.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KMKL",
+    "wall": 2.516
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KNKH",
+    "wall": 5.367,
+    "nodes": 37522,
+    "score": -46.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MMLM",
+    "wall": 0.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IMNM",
+    "wall": 4.61,
+    "nodes": 21617,
+    "score": 137.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MJLK",
+    "wall": 0.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "INNI",
+    "wall": 9.785,
+    "nodes": 50764,
+    "score": 95.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MKML",
+    "wall": 0.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "ours",
+    "msg": "MNMI",
+    "wall": 4.051,
+    "nodes": 48242,
+    "score": -1083.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "OKGK",
+    "wall": 0.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "ours",
+    "msg": "NKPK",
+    "wall": 1.555,
+    "nodes": 27454,
+    "score": -20000.0
+   },
+   {
+    "ply": 18,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "EMFL",
+    "wall": 0.005
+   }
+  ]
+ },
+ {
+  "opening": "IIKK",
+  "ours_color": "white",
+  "depth": 4,
+  "winner": "black",
+  "plies": 13,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "IIKK"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IKKI",
+    "wall": 1.079,
+    "nodes": 20064,
+    "score": 1002.3
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LHHH",
+    "wall": 5.398,
+    "nodes": 206886,
+    "score": -76.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "HJJL",
+    "wall": 0.79,
+    "nodes": 13220,
+    "score": 1105.8
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GIIH",
+    "wall": 2.662,
+    "nodes": 61267,
+    "score": 612.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GJIJ",
+    "wall": 2.539
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "FJKJ",
+    "wall": 9.807,
+    "nodes": 47909,
+    "score": -4.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JIJK",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JHJM",
+    "wall": 15.298,
+    "nodes": 181002,
+    "score": 308.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KHHK",
+    "wall": 0.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LGMF",
+    "wall": 1.346,
+    "nodes": 14712,
+    "score": 20000.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "FMGL",
+    "wall": 0.005
+   }
+  ]
+ },
+ {
+  "opening": "JKLJ",
+  "ours_color": "black",
+  "depth": 4,
+  "winner": "white",
+  "plies": 20,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JKLJ"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KKJI",
+    "wall": 4.43,
+    "nodes": 166818,
+    "score": 282.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LLKL",
+    "wall": 0.727,
+    "nodes": 11562,
+    "score": 803.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LKKJ",
+    "wall": 9.849,
+    "nodes": 318939,
+    "score": 244.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NLML",
+    "wall": 0.842
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JLOL",
+    "wall": 4.666,
+    "nodes": 24962,
+    "score": -30.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "OMMK",
+    "wall": 0.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KIPN",
+    "wall": 5.491,
+    "nodes": 51536,
+    "score": 243.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MIMJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "MMMH",
+    "wall": 6.33,
+    "nodes": 35096,
+    "score": 288.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MNLM",
+    "wall": 0.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IJNO",
+    "wall": 8.484,
+    "nodes": 44668,
+    "score": 214.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NKKN",
+    "wall": 0.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "ours",
+    "msg": "OJJO",
+    "wall": 7.383,
+    "nodes": 40284,
+    "score": 716.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "OINJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KMPH",
+    "wall": 0.257,
+    "nodes": 1726,
+    "score": -20000.0
+   },
+   {
+    "ply": 18,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NIPI",
+    "wall": 0.0
+   },
+   {
+    "ply": 19,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LIQI",
+    "wall": 0.005,
+    "nodes": 62,
+    "score": -20000.0
+   },
+   {
+    "ply": 20,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NGNH",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "JKLJ",
+  "ours_color": "white",
+  "depth": 4,
+  "winner": "black",
+  "plies": 17,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JKLJ"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KKLL",
+    "wall": 0.811,
+    "nodes": 13502,
+    "score": 996.7
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "IIIK",
+    "wall": 5.702,
+    "nodes": 200354,
+    "score": -169.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "MMKM",
+    "wall": 0.495,
+    "nodes": 5281,
+    "score": 1201.8
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "NNIL",
+    "wall": 4.479,
+    "nodes": 114135,
+    "score": -190.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KJKL",
+    "wall": 0.567
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KIKN",
+    "wall": 4.783,
+    "nodes": 48859,
+    "score": -8.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "MKJN",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "NJIO",
+    "wall": 2.295,
+    "nodes": 14321,
+    "score": 1102.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "MJML",
+    "wall": 0.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "MIMN",
+    "wall": 4.021,
+    "nodes": 23094,
+    "score": 511.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "NILK",
+    "wall": 0.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JMOH",
+    "wall": 0.928,
+    "nodes": 6585,
+    "score": 20000.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "NMJL",
+    "wall": 0.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JIIH",
+    "wall": 0.039,
+    "nodes": 424,
+    "score": 20000.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "OLNL",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "KJKI",
+  "ours_color": "black",
+  "depth": 4,
+  "winner": "white",
+  "plies": 18,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KJKI"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KKLJ",
+    "wall": 5.867,
+    "nodes": 243977,
+    "score": 248.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JLLL",
+    "wall": 0.596,
+    "nodes": 11938,
+    "score": 803.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KLJK",
+    "wall": 7.305,
+    "nodes": 269639,
+    "score": 197.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LKLM",
+    "wall": 0.741,
+    "nodes": 14093,
+    "score": 808.6
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "MLIJ",
+    "wall": 9.645,
+    "nodes": 288496,
+    "score": 357.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LNKM",
+    "wall": 0.505,
+    "nodes": 6576,
+    "score": 1213.4
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LOMO",
+    "wall": 10.256,
+    "nodes": 183886,
+    "score": 45.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NMMM",
+    "wall": 3.397
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JMOM",
+    "wall": 6.241,
+    "nodes": 29196,
+    "score": 62.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "OKNL",
+    "wall": 0.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KOPJ",
+    "wall": 4.297,
+    "nodes": 26408,
+    "score": 503.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NJMK",
+    "wall": 0.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JNOI",
+    "wall": 0.1,
+    "nodes": 777,
+    "score": -20000.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NKGI",
+    "wall": 0.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "ours",
+    "msg": "NNNI",
+    "wall": 0.392,
+    "nodes": 1986,
+    "score": -20000.0
+   },
+   {
+    "ply": 18,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "QKPK",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "KJKI",
+  "ours_color": "white",
+  "depth": 4,
+  "winner": "black",
+  "plies": 13,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KJKI"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KKII",
+    "wall": 0.513,
+    "nodes": 7497,
+    "score": 999.4
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "HHLJ",
+    "wall": 7.037,
+    "nodes": 242472,
+    "score": -167.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JHJK",
+    "wall": 0.606,
+    "nodes": 9712,
+    "score": 1098.5
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JILK",
+    "wall": 6.407,
+    "nodes": 203364,
+    "score": -284.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GKHJ",
+    "wall": 0.106
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KGFL",
+    "wall": 4.429,
+    "nodes": 37224,
+    "score": -208.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "LLIK",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "HKMM",
+    "wall": 4.521,
+    "nodes": 63064,
+    "score": 374.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IHIJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "IGIF",
+    "wall": 0.902,
+    "nodes": 4360,
+    "score": 20000.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IMIL",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "KLJI",
+  "ours_color": "black",
+  "depth": 4,
+  "winner": "white",
+  "plies": 20,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KLJI"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KIIJ",
+    "wall": 4.86,
+    "nodes": 190611,
+    "score": 296.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KJIK",
+    "wall": 0.616,
+    "nodes": 8474,
+    "score": 801.5
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LKKK",
+    "wall": 6.292,
+    "nodes": 223502,
+    "score": 273.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LLJL",
+    "wall": 0.644,
+    "nodes": 9175,
+    "score": 805.3
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "ILHJ",
+    "wall": 5.515,
+    "nodes": 189331,
+    "score": 206.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KMLN",
+    "wall": 0.698,
+    "nodes": 9836,
+    "score": 1015.6
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "MOJH",
+    "wall": 12.41,
+    "nodes": 295608,
+    "score": 193.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MKJN",
+    "wall": 0.458
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "NJIO",
+    "wall": 3.85,
+    "nodes": 19861,
+    "score": -397.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "INKN",
+    "wall": 0.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "HNMN",
+    "wall": 3.859,
+    "nodes": 10062,
+    "score": -526.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MLKO",
+    "wall": 0.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "ours",
+    "msg": "NLKP",
+    "wall": 10.964,
+    "nodes": 52914,
+    "score": -365.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NKLM",
+    "wall": 0.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JOOJ",
+    "wall": 4.349,
+    "nodes": 18977,
+    "score": 78.0
+   },
+   {
+    "ply": 18,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LPIM",
+    "wall": 0.0
+   },
+   {
+    "ply": 19,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LOLQ",
+    "wall": 0.004,
+    "nodes": 62,
+    "score": -20000.0
+   },
+   {
+    "ply": 20,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NRMQ",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "KLJI",
+  "ours_color": "white",
+  "depth": 4,
+  "winner": "black",
+  "plies": 19,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KLJI"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KILH",
+    "wall": 0.969,
+    "nodes": 15392,
+    "score": 1095.9
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "IKJK",
+    "wall": 7.475,
+    "nodes": 245713,
+    "score": -166.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "MGKG",
+    "wall": 0.472,
+    "nodes": 6586,
+    "score": 1201.2
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "NFJL",
+    "wall": 9.526,
+    "nodes": 282834,
+    "score": -487.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "NGLG",
+    "wall": 1.735
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "OGJG",
+    "wall": 12.113,
+    "nodes": 56744,
+    "score": 872.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IEJF",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "HDMI",
+    "wall": 2.458,
+    "nodes": 11919,
+    "score": 613.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "LJLI",
+    "wall": 0.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LFLL",
+    "wall": 12.467,
+    "nodes": 91005,
+    "score": -444.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "NLMK",
+    "wall": 0.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JHOM",
+    "wall": 4.493,
+    "nodes": 35336,
+    "score": -489.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KFKH",
+    "wall": 0.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KEKK",
+    "wall": 4.898,
+    "nodes": 45307,
+    "score": -215.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IJKJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 18,
+    "color": "white",
+    "engine": "ours",
+    "msg": "MJNJ",
+    "wall": 0.99,
+    "nodes": 7399,
+    "score": 20000.0
+   },
+   {
+    "ply": 19,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GJHJ",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "JLIJ",
+  "ours_color": "black",
+  "depth": 4,
+  "winner": "white",
+  "plies": 12,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JLIJ"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IKKJ",
+    "wall": 5.787,
+    "nodes": 167866,
+    "score": 282.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "HLHK",
+    "wall": 0.777,
+    "nodes": 11453,
+    "score": 803.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KIKK",
+    "wall": 2.238,
+    "nodes": 63685,
+    "score": -77.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KLIL",
+    "wall": 1.409
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LLGL",
+    "wall": 4.03,
+    "nodes": 17408,
+    "score": 36.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LMJK",
+    "wall": 0.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "HIMN",
+    "wall": 3.308,
+    "nodes": 31099,
+    "score": -57.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KNJM",
+    "wall": 0.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IIJI",
+    "wall": 0.003,
+    "nodes": 1,
+    "score": 20000.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "FIGJ",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "JLIJ",
+  "ours_color": "white",
+  "depth": 4,
+  "winner": "black",
+  "plies": 15,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JLIJ"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IKHL",
+    "wall": 0.89,
+    "nodes": 13024,
+    "score": 996.7
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KIII",
+    "wall": 5.939,
+    "nodes": 213072,
+    "score": -169.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GMGK",
+    "wall": 0.514,
+    "nodes": 5793,
+    "score": 1202.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "FNHI",
+    "wall": 4.554,
+    "nodes": 111169,
+    "score": -127.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JKHK",
+    "wall": 1.234
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KKFK",
+    "wall": 5.127,
+    "nodes": 46613,
+    "score": -8.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "FJIM",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JNEI",
+    "wall": 2.224,
+    "nodes": 13338,
+    "score": 1102.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JMHM",
+    "wall": 0.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KMFM",
+    "wall": 4.484,
+    "nodes": 26140,
+    "score": 511.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KNIL",
+    "wall": 0.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GJFI",
+    "wall": 0.911,
+    "nodes": 6466,
+    "score": 20000.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "MPLO",
+    "wall": 0.006
+   }
+  ]
+ },
+ {
+  "opening": "JHLH",
+  "ours_color": "black",
+  "depth": 4,
+  "winner": "white",
+  "plies": 18,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JHLH"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KIIJ",
+    "wall": 5.599,
+    "nodes": 178886,
+    "score": 282.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LJMI",
+    "wall": 0.723,
+    "nodes": 8689,
+    "score": 1099.4
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KKNH",
+    "wall": 2.237,
+    "nodes": 75759,
+    "score": -196.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NJKG",
+    "wall": 1.955
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JFOK",
+    "wall": 7.728,
+    "nodes": 36303,
+    "score": 28.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MELF",
+    "wall": 0.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IIND",
+    "wall": 24.458,
+    "nodes": 134391,
+    "score": 431.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LGLD",
+    "wall": 0.001
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LELI",
+    "wall": 7.666,
+    "nodes": 38377,
+    "score": 479.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NGMG",
+    "wall": 0.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JGOG",
+    "wall": 2.61,
+    "nodes": 21130,
+    "score": 313.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MHMJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "ours",
+    "msg": "MKMF",
+    "wall": 2.94,
+    "nodes": 23661,
+    "score": 120.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "OJNI",
+    "wall": 0.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KJPJ",
+    "wall": 0.005,
+    "nodes": 62,
+    "score": -20000.0
+   },
+   {
+    "ply": 18,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "QLPK",
+    "wall": 0.005
+   }
+  ]
+ },
+ {
+  "opening": "JHLH",
+  "ours_color": "white",
+  "depth": 4,
+  "winner": "black",
+  "plies": 11,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JHLH"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "HHII",
+    "wall": 0.651,
+    "nodes": 10518,
+    "score": 996.7
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KKKG",
+    "wall": 9.115,
+    "nodes": 241695,
+    "score": -83.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GGGI",
+    "wall": 0.471,
+    "nodes": 4800,
+    "score": 1203.2
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "FFLG",
+    "wall": 8.944,
+    "nodes": 245584,
+    "score": -204.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GFGH",
+    "wall": 0.73
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GEGJ",
+    "wall": 8.031,
+    "nodes": 36883,
+    "score": 103.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "FIHI",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JIKI",
+    "wall": 0.021,
+    "nodes": 112,
+    "score": 20000.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "DIEI",
+    "wall": 0.005
+   }
+  ]
+ },
+ {
+  "opening": "IIKK",
+  "ours_color": "black",
+  "depth": 5,
+  "winner": "white",
+  "plies": 16,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "IIKK"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JKLJ",
+    "wall": 0.0,
+    "book": true
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JHHJ",
+    "wall": 3.341,
+    "nodes": 66560,
+    "score": 718.9
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JIJL",
+    "wall": 8.784,
+    "nodes": 293158,
+    "score": 142.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "GKJN",
+    "wall": 1.611
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KGFL",
+    "wall": 10.184,
+    "nodes": 50262,
+    "score": -245.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "HLIM",
+    "wall": 0.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "FJKO",
+    "wall": 3.483,
+    "nodes": 15956,
+    "score": 130.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "HMHK",
+    "wall": 0.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "HIHN",
+    "wall": 4.862,
+    "nodes": 20315,
+    "score": -658.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JMGM",
+    "wall": 0.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KMFM",
+    "wall": 8.209,
+    "nodes": 72994,
+    "score": -734.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "GNGL",
+    "wall": 0.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "ours",
+    "msg": "GJGI",
+    "wall": 0.658,
+    "nodes": 7680,
+    "score": -20000.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "GPGO",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "IIKK",
+  "ours_color": "white",
+  "depth": 5,
+  "winner": "black",
+  "plies": 9,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "IIKK"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IKKI",
+    "wall": 6.024,
+    "nodes": 160479,
+    "score": 1105.9
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LHHH",
+    "wall": 4.297,
+    "nodes": 161788,
+    "score": -76.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "HLJL",
+    "wall": 2.292,
+    "nodes": 64182,
+    "score": 1211.3
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GMIJ",
+    "wall": 4.624,
+    "nodes": 97402,
+    "score": 235.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GLIL",
+    "wall": 1.776
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KLLL",
+    "wall": 1.303,
+    "nodes": 6610,
+    "score": 20000.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "ELFL",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "JKLJ",
+  "ours_color": "black",
+  "depth": 5,
+  "winner": "white",
+  "plies": 20,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JKLJ"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KKJI",
+    "wall": 3.748,
+    "nodes": 139749,
+    "score": 282.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LLKL",
+    "wall": 2.964,
+    "nodes": 69641,
+    "score": 1013.4
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LKKJ",
+    "wall": 8.236,
+    "nodes": 255509,
+    "score": 244.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NLML",
+    "wall": 0.821
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JLOL",
+    "wall": 3.998,
+    "nodes": 21543,
+    "score": -30.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "OMMK",
+    "wall": 0.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KIPN",
+    "wall": 4.884,
+    "nodes": 45052,
+    "score": 243.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MIMJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "MMMH",
+    "wall": 6.021,
+    "nodes": 31611,
+    "score": 288.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MNLM",
+    "wall": 0.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IJNO",
+    "wall": 7.313,
+    "nodes": 37723,
+    "score": 214.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NKKN",
+    "wall": 0.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "ours",
+    "msg": "OJJO",
+    "wall": 6.307,
+    "nodes": 32600,
+    "score": 716.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "OINJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KMPH",
+    "wall": 0.233,
+    "nodes": 1227,
+    "score": -20000.0
+   },
+   {
+    "ply": 18,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NIPI",
+    "wall": 0.0
+   },
+   {
+    "ply": 19,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LIQI",
+    "wall": 0.004,
+    "nodes": 62,
+    "score": -20000.0
+   },
+   {
+    "ply": 20,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NGNH",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "JKLJ",
+  "ours_color": "white",
+  "depth": 5,
+  "winner": "black",
+  "plies": 17,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JKLJ"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KKLL",
+    "wall": 4.486,
+    "nodes": 118346,
+    "score": 1102.8
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "IIIK",
+    "wall": 4.946,
+    "nodes": 159688,
+    "score": -169.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "MMMK",
+    "wall": 2.632,
+    "nodes": 66982,
+    "score": 1209.2
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "NNIL",
+    "wall": 5.374,
+    "nodes": 146526,
+    "score": -216.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "MNML",
+    "wall": 0.113
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "MJMO",
+    "wall": 4.94,
+    "nodes": 35150,
+    "score": -107.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "OINJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "PHKM",
+    "wall": 2.664,
+    "nodes": 36977,
+    "score": -292.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "OLNL",
+    "wall": 0.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KLPL",
+    "wall": 9.832,
+    "nodes": 62779,
+    "score": 250.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "PKNM",
+    "wall": 0.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LOQJ",
+    "wall": 2.67,
+    "nodes": 41700,
+    "score": 20000.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "PJOK",
+    "wall": 0.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LNQI",
+    "wall": 0.754,
+    "nodes": 5518,
+    "score": 20000.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "LKNK",
+    "wall": 0.005
+   }
+  ]
+ },
+ {
+  "opening": "KJKI",
+  "ours_color": "black",
+  "depth": 5,
+  "winner": "white",
+  "plies": 14,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KJKI"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KKLJ",
+    "wall": 5.24,
+    "nodes": 211971,
+    "score": 248.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JLLL",
+    "wall": 3.159,
+    "nodes": 59034,
+    "score": 811.5
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KLJK",
+    "wall": 6.469,
+    "nodes": 231592,
+    "score": 197.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "IKKM",
+    "wall": 3.88,
+    "nodes": 72643,
+    "score": 1012.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "HJLK",
+    "wall": 6.835,
+    "nodes": 231153,
+    "score": 294.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JMLM",
+    "wall": 1.789,
+    "nodes": 49494,
+    "score": 1133.3
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "MKMM",
+    "wall": 8.729,
+    "nodes": 221760,
+    "score": 21.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NKIM",
+    "wall": 2.431,
+    "nodes": 54991,
+    "score": 1204.2
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "HMML",
+    "wall": 20.499,
+    "nodes": 568510,
+    "score": 199.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "INIL",
+    "wall": 0.023
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IJII",
+    "wall": 28.011,
+    "nodes": 5,
+    "score": -20000.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "IPIO",
+    "wall": 0.005
+   }
+  ]
+ },
+ {
+  "opening": "KJKI",
+  "ours_color": "white",
+  "depth": 5,
+  "winner": "black",
+  "plies": 13,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KJKI"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KKII",
+    "wall": 3.214,
+    "nodes": 77148,
+    "score": 1107.1
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "HHLJ",
+    "wall": 5.303,
+    "nodes": 204220,
+    "score": -167.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JHJK",
+    "wall": 2.36,
+    "nodes": 61057,
+    "score": 1116.6
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JILK",
+    "wall": 5.22,
+    "nodes": 163537,
+    "score": -284.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GKHJ",
+    "wall": 0.109
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KGFL",
+    "wall": 4.111,
+    "nodes": 30387,
+    "score": -208.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "LLIK",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "HKMM",
+    "wall": 4.146,
+    "nodes": 61216,
+    "score": 374.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IHIJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "IGIF",
+    "wall": 4.035,
+    "nodes": 18412,
+    "score": 20000.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IMIL",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "KLJI",
+  "ours_color": "black",
+  "depth": 5,
+  "winner": "white",
+  "plies": 18,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KLJI"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KIIJ",
+    "wall": 4.119,
+    "nodes": 159757,
+    "score": 296.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KJIK",
+    "wall": 3.924,
+    "nodes": 76504,
+    "score": 711.8
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LKKK",
+    "wall": 4.6,
+    "nodes": 180379,
+    "score": 273.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LLJL",
+    "wall": 3.127,
+    "nodes": 80533,
+    "score": 1008.8
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "ILHJ",
+    "wall": 3.987,
+    "nodes": 144297,
+    "score": 206.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KMMK",
+    "wall": 3.468,
+    "nodes": 77007,
+    "score": 1123.5
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "NJJN",
+    "wall": 4.68,
+    "nodes": 112054,
+    "score": 79.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MLMO",
+    "wall": 0.357
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "NLLN",
+    "wall": 3.715,
+    "nodes": 18767,
+    "score": 8.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MNMM",
+    "wall": 0.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "MJMP",
+    "wall": 4.455,
+    "nodes": 21644,
+    "score": -288.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NMLM",
+    "wall": 0.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JMOM",
+    "wall": 6.379,
+    "nodes": 29530,
+    "score": -20000.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JOKN",
+    "wall": 0.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "ours",
+    "msg": "NKOJ",
+    "wall": 0.555,
+    "nodes": 3588,
+    "score": -20000.0
+   },
+   {
+    "ply": 18,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "HQIP",
+    "wall": 0.005
+   }
+  ]
+ },
+ {
+  "opening": "KLJI",
+  "ours_color": "white",
+  "depth": 5,
+  "winner": "black",
+  "plies": 19,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KLJI"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KILH",
+    "wall": 4.761,
+    "nodes": 127804,
+    "score": 1106.4
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "IKJK",
+    "wall": 5.547,
+    "nodes": 202060,
+    "score": -166.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "MGKG",
+    "wall": 1.891,
+    "nodes": 37781,
+    "score": 1217.6
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "NFJL",
+    "wall": 6.667,
+    "nodes": 238101,
+    "score": -487.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "NGLG",
+    "wall": 1.65
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "OGJG",
+    "wall": 10.984,
+    "nodes": 53355,
+    "score": 872.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IEJF",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "HDMI",
+    "wall": 5.224,
+    "nodes": 25561,
+    "score": 136.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "LJLI",
+    "wall": 0.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LFLL",
+    "wall": 11.05,
+    "nodes": 78118,
+    "score": -444.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "NLMK",
+    "wall": 0.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JHOM",
+    "wall": 4.105,
+    "nodes": 31344,
+    "score": -489.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KFKH",
+    "wall": 0.0
+   },
+   {
+    "ply": 16,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KEKK",
+    "wall": 4.068,
+    "nodes": 38890,
+    "score": -215.0
+   },
+   {
+    "ply": 17,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IJKJ",
+    "wall": 0.0
+   },
+   {
+    "ply": 18,
+    "color": "white",
+    "engine": "ours",
+    "msg": "MJNJ",
+    "wall": 3.005,
+    "nodes": 13906,
+    "score": 20000.0
+   },
+   {
+    "ply": 19,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GJHJ",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "JLIJ",
+  "ours_color": "black",
+  "depth": 5,
+  "winner": "white",
+  "plies": 12,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JLIJ"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IKKJ",
+    "wall": 3.823,
+    "nodes": 140988,
+    "score": 282.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "HLHK",
+    "wall": 2.875,
+    "nodes": 69985,
+    "score": 1013.4
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "ILJK",
+    "wall": 7.574,
+    "nodes": 255479,
+    "score": 244.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "HJHM",
+    "wall": 0.45
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "HIHN",
+    "wall": 3.372,
+    "nodes": 18376,
+    "score": 244.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "FMGL",
+    "wall": 0.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JIEN",
+    "wall": 4.658,
+    "nodes": 24019,
+    "score": 176.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "EMGM",
+    "wall": 0.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IMJM",
+    "wall": 1.604,
+    "nodes": 7547,
+    "score": -20000.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "CMDM",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "JLIJ",
+  "ours_color": "white",
+  "depth": 5,
+  "winner": "black",
+  "plies": 15,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JLIJ"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IKHL",
+    "wall": 4.297,
+    "nodes": 116531,
+    "score": 1103.7
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KIII",
+    "wall": 4.367,
+    "nodes": 171997,
+    "score": -169.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GMIM",
+    "wall": 2.67,
+    "nodes": 66849,
+    "score": 1209.2
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "FNHI",
+    "wall": 4.878,
+    "nodes": 152614,
+    "score": -216.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "FMHM",
+    "wall": 0.115
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JMEM",
+    "wall": 5.006,
+    "nodes": 36380,
+    "score": -107.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KOJN",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "LPGK",
+    "wall": 2.363,
+    "nodes": 35036,
+    "score": -292.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "HOHN",
+    "wall": 0.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "ours",
+    "msg": "HKHP",
+    "wall": 5.601,
+    "nodes": 61070,
+    "score": 250.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "IPGN",
+    "wall": 0.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "ours",
+    "msg": "ELDK",
+    "wall": 2.454,
+    "nodes": 42403,
+    "score": 20000.0
+   },
+   {
+    "ply": 15,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "KRJQ",
+    "wall": 0.004
+   }
+  ]
+ },
+ {
+  "opening": "JHLH",
+  "ours_color": "black",
+  "depth": 5,
+  "winner": "white",
+  "plies": 14,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "JHLH"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "ours",
+    "msg": "KIIJ",
+    "wall": 3.828,
+    "nodes": 146743,
+    "score": 282.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "KGLG",
+    "wall": 3.602,
+    "nodes": 86890,
+    "score": 1117.6
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IIKJ",
+    "wall": 10.348,
+    "nodes": 359827,
+    "score": 184.0
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "LJLI",
+    "wall": 0.38
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "ours",
+    "msg": "LFLK",
+    "wall": 3.795,
+    "nodes": 20786,
+    "score": -114.0
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "MGJG",
+    "wall": 0.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "ours",
+    "msg": "IGNG",
+    "wall": 2.788,
+    "nodes": 17831,
+    "score": 135.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "IFKH",
+    "wall": 0.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "ours",
+    "msg": "MJHE",
+    "wall": 1.749,
+    "nodes": 14377,
+    "score": -20000.0
+   },
+   {
+    "ply": 12,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "NJMI",
+    "wall": 0.0
+   },
+   {
+    "ply": 13,
+    "color": "black",
+    "engine": "ours",
+    "msg": "JFIE",
+    "wall": 1.118,
+    "nodes": 7605,
+    "score": -20000.0
+   },
+   {
+    "ply": 14,
+    "color": "white",
+    "engine": "cloudict",
+    "msg": "PLOK",
+    "wall": 0.005
+   }
+  ]
+ },
+ {
+  "opening": "JHLH",
+  "ours_color": "white",
+  "depth": 5,
+  "winner": "black",
+  "plies": 11,
+  "moves": [
+   {
+    "ply": 1,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "JJ"
+   },
+   {
+    "ply": 2,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JHLH"
+   },
+   {
+    "ply": 3,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "HHII",
+    "wall": 3.601,
+    "nodes": 86025,
+    "score": 1106.0
+   },
+   {
+    "ply": 4,
+    "color": "white",
+    "engine": "ours",
+    "msg": "KKKG",
+    "wall": 6.948,
+    "nodes": 198061,
+    "score": -83.0
+   },
+   {
+    "ply": 5,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GGGI",
+    "wall": 1.828,
+    "nodes": 45381,
+    "score": 1215.1
+   },
+   {
+    "ply": 6,
+    "color": "white",
+    "engine": "ours",
+    "msg": "FFLG",
+    "wall": 7.325,
+    "nodes": 202303,
+    "score": -204.0
+   },
+   {
+    "ply": 7,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "GFGH",
+    "wall": 0.456
+   },
+   {
+    "ply": 8,
+    "color": "white",
+    "engine": "ours",
+    "msg": "GEGJ",
+    "wall": 6.218,
+    "nodes": 30407,
+    "score": 103.0
+   },
+   {
+    "ply": 9,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "FIHI",
+    "wall": 0.0
+   },
+   {
+    "ply": 10,
+    "color": "white",
+    "engine": "ours",
+    "msg": "JIKI",
+    "wall": 0.019,
+    "nodes": 114,
+    "score": 20000.0
+   },
+   {
+    "ply": 11,
+    "color": "black",
+    "engine": "cloudict",
+    "msg": "DIEI",
+    "wall": 0.004
+   }
+  ]
+ }
+]

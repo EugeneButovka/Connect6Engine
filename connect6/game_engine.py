@@ -16,8 +16,8 @@ from .defines import (
     SearchStats,
 )
 from .opening_book import book_move, load_opening_book
+from .parallel import configured_budget, search_v6
 from .protocol import color_to_name, log_command, log_error, move2msg, msg2move, print_board
-from .vcf import search_v5
 
 
 def _flush_output() -> None:
@@ -106,7 +106,7 @@ class GameEngine:
             return self._announce_end(end_result, color, "AI")
         stats = SearchStats()
         start = time.perf_counter()
-        result = search_v5(self.board, color, self.search_depth, pre_move, stats, self.use_vcf)
+        result = search_v6(self.board, color, self.search_depth, pre_move, stats, self.use_vcf, configured_budget())
         end = time.perf_counter()
 
         print(f"Search Time:\t{end - start:.3f}")

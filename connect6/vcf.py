@@ -55,7 +55,7 @@ def search_v5(
     work = copy_board(board)
     make_move(work, best.move, color)
     loses = find_forced_win(work, other, stats) is not None
-    armed = len(_join_threats(work, other, stats))
+    armed = len(join_threats(work, other, stats))
     if not loses and armed == 0:
         return best
     quality = (1 if loses else 0, armed)
@@ -75,7 +75,7 @@ def _screen_fallback(
     work = copy_board(board)
     make_move(work, best.move, color)
     cells: set[Cell] = set()
-    for join in _join_threats(work, other, stats):
+    for join in join_threats(work, other, stats):
         cells.update(((join.positions[0].x, join.positions[0].y), (join.positions[1].x, join.positions[1].y)))
     for first in sorted(cells):
         for second in sorted(cells):
@@ -86,14 +86,14 @@ def _screen_fallback(
         probe = copy_board(board)
         make_move(probe, candidate, color)
         loses = find_forced_win(probe, other, stats) is not None
-        armed = len(_join_threats(probe, other, stats))
+        armed = len(join_threats(probe, other, stats))
         if (1 if loses else 0, armed) < quality:
             quality = (1 if loses else 0, armed)
             chosen = SearchResult(candidate, best.score)
     return chosen
 
 
-def _join_threats(board: Board, attacker: Color, stats: SearchStats | None = None) -> list[Move]:
+def join_threats(board: Board, attacker: Color, stats: SearchStats | None = None) -> list[Move]:
     armed: list[Move] = []
     for join in _split_joins(board, attacker):
         make_move(board, join, attacker)

@@ -28,11 +28,11 @@ uv run main.py      # or run the entry point directly
 A session looks like this (`>` marks what you type):
 
 ```
-On help for GameEngine TIA.Connect6_end_game_detect_Butovka_Hasnaat
+On help for GameEngine Connect6_Butovka_Ahmed
  name        - print the name of the Game Engine.
  ...
 > name
-name TIA.Connect6_end_game_detect_Butovka_Hasnaat
+name Connect6_Butovka_Ahmed
 > new white
 > move JJ
 Book:	IIKK
@@ -46,17 +46,17 @@ move LLIJ
 
 `new white` makes the engine White; `move JJ` is the opponent's center opening, answered from the opening book in zero time; a reply that leaves the book lines (here `LKKK`) falls back to the search.
 
-**Configuration.** The engine reads its weights, at import, from the file named by the `WEIGHTS_FILE` environment variable — default: `tuning/winner.json`, the strongest weights found by the genetic experiment; if that file is absent, the hand-tuned `tuning/default.json` applies. The opening book works the same way: `tuning/opening_book.json` by default, or the file named by `BOOK_FILE` — a missing or unreadable book simply disables the book and the engine searches every move. Every command is appended to `tia-engine.log`.
+**Configuration.** The engine reads its weights, at import, from the file named by the `WEIGHTS_FILE` environment variable — default: `tuning/winner.json`, the strongest weights found by the genetic experiment; if that file is absent, the hand-tuned `tuning/default.json` applies. The opening book works the same way: `tuning/opening_book.json` by default, or the file named by `BOOK_FILE` — a missing or unreadable book simply disables the book and the engine searches every move. The v6 deployment budget is `V6_TIME_BUDGET` seconds of wall time per move (default 28, measured from the first tree node), and `V6_JOBS` sets the number of root-split worker processes (default: all logical cores; `V6_JOBS=1` runs the same split inline). Every command is appended to `tia-engine.log`.
 
 ## Build an executable
 
-To generate a standalone executable compatible with the game interface:
+To generate the compiled engine — the mypyc build of the whole `connect6` package plus a launcher, under `dist/`:
 
 ```sh
-uv run pyinstaller --onefile --add-data "tuning/winner.json:tuning" --add-data "tuning/default.json:tuning" --add-data "tuning/opening_book.json:tuning" main.py
+uv run --group build python scripts/build_executable.py
 ```
 
-The executable is generated at `dist/main`. `tuning/default.json` must be bundled (import fails without it); bundling `tuning/winner.json` too makes the executable play the tuned champion — without it, the executable plays the hand-tuned weights. Bundling `tuning/opening_book.json` adds the opening book (optional; without it every move is searched). With `WEIGHTS_FILE` set, that file is read instead (and must exist); `BOOK_FILE` likewise names the book to load.
+The command compiles the package with mypyc, stages the extension modules as `dist/lib/connect6`, copies the shipped weights and opening book to `dist/lib/tuning`, and writes the `dist/Connect6_Butovka_Ahmed` launcher (the name comes from `ENGINE_NAME`). The launcher pins `WEIGHTS_FILE` and `BOOK_FILE` to the staged files — explicit environment values win — and exports `PYTHONPATH`, so the engine's own worker processes (the v6 root split, `V6_JOBS` of them) import the compiled package too. The build ends with a protocol smoke test. To additionally verify the compilation: `uv run --group build python scripts/verify_compiled.py` re-runs the v6 fixed-depth root on the documented positions interpreted and compiled, asserts identical moves, scores and node counts, and reports the wall speedup. The launcher's shebang names the interpreter that compiled the extensions — rebuild when switching interpreters.
 
 ## Commands
 
@@ -73,7 +73,7 @@ Once running, the engine accepts the following commands:
 | `move XXXX`  | Tell the engine the opponent made the move `XXXX`; it replies with its own move. |
 | `new black`  | Start a new game; the engine plays Black and opens in the center.       |
 | `new white`  | Start a new game; the engine plays White.                               |
-| `depth d`    | Set the search depth (1–9, default 3).                                 |
+| `depth d`    | Set the search depth floor (1–9, default 3); the budget deepens past it while the wall budget lasts. |
 | `help`       | Print the command list.                                                 |
 
 *Legend — `X` is a letter `A`–`S` naming a column/row, two letters per stone: `JJ` is the centre, `CCDD` a pair of stones; `d` is the search depth (1–9, default 3).*
@@ -87,7 +87,8 @@ main.py                             entry point (thin: creates and runs the engi
 connect6/                           the engine package
 ├── game_engine.py                  game loop, command protocol, move handling, game-end announcements, opening-book lookup
 ├── search.py                       one unified `_alpha_beta` loop: min-max and alpha-beta (prune flag) plus the enhanced quiescence variant
-├── vcf.py                          the deployed root `search_v5`: proven forced-win offense, budgeted deepening, the defence screen
+├── vcf.py                          the v5 root `search_v5`: proven forced-win offense, budgeted deepening, the defence screen
+├── parallel.py                     the deployed root `search_v6`: the parallel split root — full-window root-candidate jobs over a worker pool, the node/wall budgets
 ├── evaluation.py                   static evaluation: terminal scores, living-stone-set counting
 ├── candidates.py                   candidate generation: line-potential cell scoring, co-linear-corrected pairing, threat re-rank, completion pairs
 ├── threats.py                      threat counting: sliding-window defender-forcing lines, joint two-stone counts
@@ -96,14 +97,18 @@ connect6/                           the engine package
 ├── opening_book.py                 opening book: stone-inventory position keys, JSON load, recorded-move lookup with occupied-cell validation
 └── defines.py                      constants, `Color`/`GameResult` enums, frozen `Position`/`Move`, tuple aliases
 tests/                              the test suite
-└── test.py                         89 deterministic tests, run with `uv run tests/test.py`
+└── test.py                         97 deterministic tests, run with `uv run tests/test.py`
 benchmarks/                         the benchmarks
 ├── battery.json                    the battery's 19 curated positions (hand-built + harvested from self-play)
 ├── perf_position_battery.ipynb     the battery's assert-validated notebook: all verdicts and node budgets asserted against section 11
 ├── perf_depth_v1_min_max.ipynb     min-max only, depths 1-4, against the O(B^depth) model
 ├── perf_depth_v2_alpha_beta.ipynb  min-max vs alpha-beta, depths 1-5, with the ideal O(B^(depth/2)) guide
 ├── perf_search_v4_enhanced.ipynb   the enhanced search vs plain alpha-beta: section-10 position tables, the 11-1 head-to-head fixture, every number asserted
-└── perf_versions_v1_v4.ipynb       the version timeline v1-v4: games in both colors plus cost tables at depths 3-4, every number asserted
+├── perf_search_v5_layer.ipynb      the forced-win layer vs the v4 engine on the common trajectory (benchmarks/trajectory.json): node costs, changes, verdict flips and the stage-2 deepening probe asserted
+├── perf_search_v6_split.ipynb      the split root vs the v5 engine on the same trajectory: 2.32x nodes, zero verdict flips, the regression fixture and the cost exhibit asserted
+├── perf_versions_v1_v6.ipynb       the version timeline v1-v6: twelve games in both colors plus cost tables at depths 3-4, every number asserted
+├── tournament_cloudict.py          the external benchmark: the compiled engine against Cloudict, 36 games over six openings, both colors, floors 3-5
+└── cloudict/                       the reference opponent binary and its pattern table
 tuning/                             the experiments and their generated artifacts
 ├── genetic_tuner.py                genetic tuning of the evaluation weights (self-play round-robin)
 ├── run_experiment.py               repeats the documented GA experiment: both seeds, controls, winner refresh
@@ -112,11 +117,16 @@ tuning/                             the experiments and their generated artifact
 ├── opening_book.json               engine default opening book: self-play positions and recorded moves
 ├── winner.json                     engine default weights: the strongest champion found by the experiment
 └── default.json                    the hand-tuned configuration: mandatory fallback, the tuner baseline, pinned by the test suite
+scripts/                            auxiliary tooling (build, verification, notebook runs)
+├── build_executable.py             the mypyc build: dist/lib extensions, staged weights/book, the dist launcher, protocol smoke test
+├── verify_compiled.py             compiled-vs-interpreted verification: identical moves/scores/node counts, wall speedup
+├── _verify_collect.py             the collection helper the verifier spawns for each side
+└── nbclient_run.py                the stored-output runner: executes a notebook via nbclient and writes it back
 docs/                               documentation
 └── EVALUATION.md                   evaluation & search documentation (13 chapters)
 ```
 
-- **Search** (`search.py`) — one unified `_alpha_beta` loop: the `prune` flag selects min-max or alpha-beta; the `enhanced` flag (a) forward-prunes interior plies by `FORWARD_WIDTHS` (full width at the root and the reply ply — completion pairs survive every cut) and (b) at depth zero hands over to quiescence: stand on the static evaluation unless the position is loud (threats just made, or a standing live five), then extend through forcing moves up to six more plies. Forced wins and lost defences are thereby priced at their true terminal value at depths where plain alpha-beta still oscillates. The deployed root is `search_v5` (`vcf.py`): the forced-win layer first, then this enhanced search deepened under a node budget, then the defence screen.
+- **Search** (`search.py`) — one unified `_alpha_beta` loop: the `prune` flag selects min-max or alpha-beta; the `enhanced` flag (a) forward-prunes interior plies by `FORWARD_WIDTHS` (full width at the root and the reply ply — completion pairs survive every cut) and (b) at depth zero hands over to quiescence: stand on the static evaluation unless the position is loud (threats just made, or a standing live five), then extend through forcing moves up to six more plies. Forced wins and lost defences are thereby scored at their true terminal value at depths where plain alpha-beta still oscillates. The deployed root is `search_v5` (`vcf.py`): the forced-win layer first (stage 1), then this enhanced search deepened under a node budget (stage 2), then the defence screen (stage 3).
 - **Evaluation** (`evaluation.py`) — living stone sets weighted by tier (`LIVE_WEIGHTS` 1-4 plus the pinned live-5 sentinel) and by space (`WINDOW_FACTOR` multiplies sets with extra completable 6-windows). The full call flow of a `move` command — from stdin through the search loop to the printed reply — is diagrammed in [docs/EVALUATION.md, section 5](docs/EVALUATION.md#5-the-v1-v2-engine--the-evaluator-inside-the-min-max-search).
 - **Candidates** (`candidates.py`, `threats.py`) — `MAX_CANDIDATE_CELLS` top cells by line potential (attack + defence) paired into `MAX_CANDIDATE_MOVES` moves, co-linear pairs corrected, top pairs re-ranked by the defender-forcing threats they create (`THREAT_WEIGHT` per threat), and two-stone completion pairs injected first.
 - **Opening book** (`opening_book.py`) — position keys are stone inventories (the side to move is implied by the parity of the stone count); a hit is applied and the search skipped, a miss or invalid entry falls back to the search silently.
@@ -153,7 +163,7 @@ uv run tests/test.py
 - **Candidate generation and threats** — co-linear pair correction, the sliding window, joint two-stone counts, fork ranking.
 - **Min-max search** — including forced-block regression tests.
 - **Alpha-beta equivalence** — same scores and winning/blocking moves as the naive search, strictly fewer nodes.
-- **Enhanced search** — quiescence finds forced wins one ply past the plain horizon, prices lost defences honestly, blocks live fours/fives; forward pruning visits fewer nodes at depth four.
+- **Enhanced search** — quiescence finds forced wins one ply past the plain horizon, scores lost defences correctly, blocks live fours/fives; forward pruning visits fewer nodes at depth four.
 - **Opening book** — stone-inventory keys, occupied/invalid entry rejection, book replies and clean search fallback through the game engine.
 
 The suite pins `WEIGHTS_FILE` and `BOOK_FILE` before importing the engine, so every assertion measures the documented configuration regardless of the environment.
@@ -168,15 +178,17 @@ The codebase is fully typed: `Color`/`GameResult` enums, frozen `Position`/`Move
 
 ## Benchmarks
 
-Six benchmark notebooks, all runnable in Jupyter or PyCharm's built-in notebook support. The last four pin their weights before importing the engine and **assert every documented deterministic number** (nodes, scores, moves, game outcomes) against the evaluation chapter, so a clean run is itself a validation — only wall times vary between runs.
+Eight benchmark notebooks plus one external tournament, all runnable from the command line or in Jupyter/PyCharm's built-in notebook support. From the command line: `uv run python scripts/nbclient_run.py benchmarks/<notebook>.ipynb` re-executes a notebook headlessly (nbclient) and writes its stored outputs back. The measurement notebooks pin their weights before importing the engine and **assert every documented deterministic number** (nodes, scores, moves, game outcomes) against the evaluation chapter, so a clean run is itself a validation — only wall times vary between runs.
 
 - `benchmarks/perf_depth_v1_min_max.ipynb` — the min-max baseline: `search_min_max` at depths 1–4 (one run each, ~1 minute: the depth-4 search dominates), plotted against the theoretical `O(B^depth)` model.
 - `benchmarks/perf_depth_v2_alpha_beta.ipynb` — the comparison: `search_min_max` at depths 1–4 and `search_alpha_beta` at depths 1–5, asserting identical scores, printing the combined time/node/growth table, and plotting both curves against the theoretical `O(B^depth)` model and the ideal `O(B^(depth/2))` guide. On that board alpha-beta runs ~14x fewer nodes at depth 3 and ~44x at depth 4, making depths 4-5 playable.
 - `benchmarks/perf_search_v4_enhanced.ipynb` — the section-10 measurements: the enhanced search (quiescence + forward pruning) vs plain alpha-beta on the five documented positions at depths 2–4 (verdict exhibits, cost exhibits), the 12-game head-to-head referee over six openings at depth 3 — the 11-1 fixture — a 48-decision-point common trajectory re-analyzed by both engines move by move (27 move changes, 3.8x mean nodes, zero verdict flips), and the transposition-table rejection measured: an exact replica of the plain search, the revisit bound (3.0-14.6% at depth 3), and a sound table that recovers the bound while the wall clock stays a wash — all node counts, scores and moves asserted (~6 min; the games and the analyses run one worker each).
-- `benchmarks/perf_versions_v1_v4.ipynb` — the section-12 benchmark: the four pre-v5 versions (v1 naive min-max, v2 alpha-beta, v3 alpha-beta with tuned weights, v4 quiescence + forward pruning + opening book) play the timeline's pairings in both colors at depth 3, plus per-position cost tables at depths 3–4 where the opening book answers the opening reply in zero nodes — all 8 games and 42 table rows asserted (~2 min; the eight games run one worker process each).
-- `benchmarks/perf_search_v5_layer.ipynb` — the section-11.3 layer measurement on the same common trajectory: every decision point of the recorded v4-vs-v4 game re-analyzed by the deployed `search_v5` and the v4 engine at depth 3 — the layer pays 4.4x v4's mean nodes (29,486 vs 6,667), changes 35 of 48 moves, and flips six verdict bands, five of them one-node stage-1 answers on proven wins v4 never priced — totals, changes, flips and one-node answers asserted (~6 min; the self-play regeneration dominates).
+- `benchmarks/perf_versions_v1_v6.ipynb` — the section-12 benchmark: all six versions (v1 naive min-max through v6 parallel split root) play the timeline's pairings in both colors at depth 3 — twelve games, the v5-vs-v6 pairing asserted to be one game played twice — plus per-position cost tables at depths 3–4 where the opening book answers the opening reply in zero nodes and the v5/v6 rows are budget answers — all 12 games and 66 table rows asserted (~10 min; the twelve games run one worker process each).
+- `benchmarks/perf_search_v6_split.ipynb` — the section-13.3 split-root measurement on the same common trajectory: every decision point of the recorded game re-analyzed by `search_v5` and `search_v6` at floor 3 — the split keeps every verdict (9 of 48 moves changed, zero verdict-band flips, all five one-node stage-1 answers reproduced) at 2.32x v5's nodes — plus the terminal-break regression fixture and its per-depth cost exhibit (6.49x at the floor) asserted (~15 min; the trajectory analysis dominates).
+- `benchmarks/perf_search_v5_layer.ipynb` — the section-11.3 layer measurement on the same common trajectory (loaded from `benchmarks/trajectory.json`): every decision point of the recorded v4-vs-v4 game re-analyzed by the deployed `search_v5` and the v4 engine at depth 3 — the layer pays 4.4x v4's mean nodes (29,486 vs 6,667), changes 35 of 48 moves, and flips six verdict bands, five of them one-node stage-1 answers and the sixth a 70-node VCF proof on wins v4 never recognized; the stage-2 deepening probe measures the budget loop in isolation — 30 changed moves on quiet (non-tactical) positions, zero verdict flips (~8 min on 12 workers; the 96-position analysis and the probe dominate).
 - The battery runner (`uv run tuning/harness.py battery [--jobs N]`) — the section-11 position battery: nineteen curated positions (forced wins in one to three turns, defences against the same horizons, opening lines with a consistency double-run) played out in the deployment configuration, self-play against the engine itself. Runs twelve worker processes by default (`--jobs 1` for sequential): ~5 min on 12 cores against ~20 min sequential — the entries are independent, so the results are bit-identical either way.
 - `benchmarks/perf_position_battery.ipynb` — the assert-validated record of the battery: runs it on every core and asserts all 19 verdicts, transcript identities, ply counts and node budgets against section 11 (~5 min on 12 cores; the defence entries dominate).
+- `benchmarks/tournament_cloudict.py` — the section-13.5 external benchmark: the compiled engine against the reference Cloudict binary, thirty-six games — six openings, both colors, depth floors 3-5, both engines on the same depth command — every move recorded with wall time, nodes and score to `benchmarks/tournament_cloudict.json` (needs `benchmarks/cloudict/patterns.in` beside the binary; the full run is about ninety minutes, mostly our wall-budget moves). The measured matrix is 0-36 — the reference's always-on VCF out-horizons the deployment at every floor; see docs/EVALUATION.md 13.5 for the analysis.
 
 ## Tuning
 

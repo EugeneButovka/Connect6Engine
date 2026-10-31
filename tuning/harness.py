@@ -329,8 +329,64 @@ def analyze_history(
         return list(pool.map(_analysis_worker, tasks))
 
 
+@dataclass(frozen=True, slots=True)
+class DeepeningStep:
+    depth: int
+    nodes: int
+    score: int
+    move: str
+
+
+def _deepening_worker(task: tuple[list[str], int, int]) -> tuple[int, list[DeepeningStep]]:
+    """Replicate v5's stage-2 budget loop (connect6/vcf.py) at one decision point.
+
+    The iterations the deployed loop actually runs: the floor search first, then
+    one deepen step at a time (V5_DEEPEN_STEPS at most) while the cumulative node
+    count stays under V5_NODE_BUDGET; a proven terminal score ends the loop
+    early. Stage 1 and the defence screen are excluded — this is the loop's
+    own price tag.
+    """
+    from connect6.defines import MAXINT, MININT, SearchStats, V5_DEEPEN_STEPS, V5_NODE_BUDGET
+    from connect6.protocol import move2msg
+    from connect6.search import search_alpha_beta_with_quiescence
+
+    history, prefix, floor = task
+    board, pre_move, color = replay_history(history[:prefix])
+    steps: list[DeepeningStep] = []
+    spent = 0
+    for step in range(V5_DEEPEN_STEPS + 1):
+        iteration = SearchStats()
+        best = search_alpha_beta_with_quiescence(board, color, floor + step, pre_move, iteration)
+        spent += iteration.node_count
+        steps.append(DeepeningStep(floor + step, iteration.node_count, best.score, move2msg(best.move)))
+        if spent >= V5_NODE_BUDGET or best.score in (MININT, MAXINT):
+            break
+    return prefix, steps
+
+
+def probe_deepening(
+    history: list[str],
+    floor: int = 3,
+    jobs: int = 12,
+) -> dict[int, list[DeepeningStep]]:
+    """Price v5's stage-2 budget loop at every decision point of a recorded history.
+
+    One worker process per prefix when jobs > 1; node counts, scores and moves
+    are bit-identical to the sequential run.
+    """
+    tasks = [(history, prefix, floor) for prefix in range(1, len(history))]
+    if jobs <= 1 or len(tasks) <= 1:
+        return dict(_deepening_worker(task) for task in tasks)
+    with concurrent.futures.ProcessPoolExecutor(max_workers=jobs) as pool:
+        return dict(pool.map(_deepening_worker, tasks))
+
+
 def deployment_player() -> Player:
-    """The deployed engine as a player: opening book first, then search_v5."""
+    """The v5 engine as a player: opening book first, then search_v5.
+
+    The position battery stays pinned to v5 — its verdicts are the v5
+    deployment's regression record — while the shipped engine itself is
+    v6 (connect6.parallel.search_v6)."""
     from connect6.opening_book import book_move, load_opening_book
     from connect6.vcf import search_v5
 

@@ -1,3 +1,36 @@
+# The engine versions
+
+The project is one engine in six configurations, one timeline. Each version names a
+search callable, a weight set and an opening-book policy; each step is specified,
+measured and defended in its own chapter, and the version timeline (section 12) plays
+them against each other.
+
+| version | search callable | adds over the previous | answer depth | chapter |
+|---|---|---|---|---|
+| v1 | `search_min_max` | the baseline: full-width min-max, hand-tuned weights | fixed depth | 2-5 |
+| v2 | `search_alpha_beta` | alpha-beta cutoffs, same weights — speed, provably identical play | fixed depth | 5 |
+| v3 | `search_alpha_beta` | the tuned weight set from the genetic algorithm (`tuning/winner.json`) | fixed depth | 9 |
+| v4 | `search_alpha_beta_with_quiescence` | quiescence, forward pruning, the opening book | fixed depth | 10 |
+| v5 | `vcf.search_v5` | the forced-win layer: a proven forced-win search, **budgeted deepening**, a defensive check on the chosen move | floor + node budget (12,000) | 11 |
+| v6 | `parallel.search_v6` | the parallel split root: every root candidate searched in parallel with unshared bounds, a node budget 3x v5's | floor + node budget (36,000); wall budget (28 s) in the compiled deployment | 13 |
+
+**Where iterative deepening enters: v5, not v4.** The v1-v4 engines answer at exactly
+the depth they are asked for — `search_alpha_beta_with_quiescence` is a fixed-depth
+search, and the section-12 cost table's v1-v4 rows are separate fixed trees per depth.
+The budgeted deepening loop — search the depth floor (the configuration's base depth, 3),
+then keep deepening while the cumulative
+node count fits the budget — is v5's stage 2 (`V5_NODE_BUDGET = 12000`, 11.1), and v6
+inherits the pattern with its own constant (`V6_NODE_BUDGET = 36000`, 13.1) plus the
+wall-budget mode the compiled build serves. That is why the timeline's cost table marks
+only the v5/v6 rows as *budget answers* — the answer of a budgeted loop, whose reached depth
+is whatever fit the node budget: their node counts buy more depth than the row's
+floor label, and their reached depth is the notebook's to print.
+
+The tuned weights, the opening book and — from v5 on — the forced-win layer and its
+defensive check (the three-step procedure of 11.1) are shared policy across the versions that carry them; the timeline pins
+each row's configuration exactly (search callable, weights, book), so no step borrows a
+later step's machinery.
+
 # Static Evaluation
 
 `evaluation.evaluate(board, pre_move)` turns any board position into a single number that the min-max search uses to compare branches. It runs in the **fixed first-player frame**: the score is always written from Black's point of view — positive means Black (the first player) is better, negative means White is better. The search tree never flips the evaluation when the engine plays White; it simply alternates max/min by turn.
@@ -463,7 +496,7 @@ would extend a 5-run to a six.
 There used to be three copies of this walk in the codebase (the original `measure_line`, the
 inline loops in `_score_position`, and a completion-pair scanner that re-walked every hot
 cell). They now share one implementation, at a measured ~10% cost on the evaluate hot
-path — the price of having the walk logic stated once. The completion-pair pass shrank with
+path — the cost of having the walk logic stated once. The completion-pair pass shrank with
 it: a cell's scalar score already proves whether a virtual 5-run exists (section 6.5), so
 only those few cells are ever re-walked.
 
@@ -616,7 +649,7 @@ used as-is.
 - **joint threat count** — `count_move_threats` for a two-stone pair: the threats over the 4 axes after placing both stones.
 - **merged slice** — on an axis the two stones share, the union of their ±5-cell influence ranges, counted in one pass so shared defence points count once.
 - **fork** — a two-stone move whose threats live on two independent axes (4 threats); unbeatable per the 3-threats theorem.
-- **THREAT_WEIGHT** — 1000 (= `SetWeight.LIVE_FOUR`): the ranking price of one threat.
+- **THREAT_WEIGHT** — 1000 (= `SetWeight.LIVE_FOUR`): the ranking weight of one threat.
 - **THREAT_RANK_WIDTH** — 10: how many of the top-ranked pairs the threat re-rank processes.
 
 **Measurement (8.4)**
@@ -660,7 +693,7 @@ identical in all three boards:
 - **Two-window** — White at (10,2) and (10,10): (10,7) or (10,8) still kills it, but a far stone at (10,9) no longer does — the six survives as a cramped 1000.
 - **Spacious** — open board: no single stone makes the set dead; only the entire two-stone reply, both ends at once, kills it.
 
-The same four stones, three prices: section 2's flat tier paid 1000 for all of them. The
+The same four stones, three values: section 2's flat tier assigned 1000 to all of them. The
 bookends are the tactically real cases — a cramped live-4 dies to half a reply, a spacious
 one absorbs a whole move — and the cramped < spacious ordering is exactly what Eval Test 11
 pins (`test_spacious_set_outvalues_cramped_set`).
@@ -782,8 +815,8 @@ re-scored and re-sorted:
 pair value = corrected_sum + THREAT_WEIGHT x count_move_threats(pair, side to move)
 ```
 
-`THREAT_WEIGHT = 1000 = SetWeight.LIVE_FOUR` prices one forced defender stone at one live-4
-tier of urgency, so a double-threat pair outranks any quiet pair that merely blocks and
+`THREAT_WEIGHT = 1000 = SetWeight.LIVE_FOUR` values one forced defender stone at one live-4
+tier of urgency, so a double-threat pair outranks any quiet (non-tactical) pair that merely blocks and
 extends. A pair whose joint count returns `THREAT_WIN` — a completed 6-window after both
 stones — jumps ahead of *all* ranked pairs: these are the two-stone gap-bridging wins the
 single-cell gate of section 6.5 cannot see (it needs a virtual 5-run after *one* stone).
@@ -810,8 +843,8 @@ counted; windows elsewhere are identical for every pair and cancel in the orderi
   single-cell horizon stands.
 
 **Deliberately not done.** No global threat differential in the leaf evaluation (~triple
-per-leaf cost for uncertain gain — the living-set model prices the stones, the window
-factor prices their liberty; the primitive to build it exists). And threat counts never
+per-leaf cost for uncertain gain — the living-set model values the stones, the window
+factor values their liberty; the primitive to build it exists). And threat counts never
 replace the depth-limited search: a 3-threat fork is "won" only in the theorem's forcing
 sense — the search still walks the tree. As a side effect the engine now *creates* such
 forks deliberately instead of only surviving them.
@@ -861,7 +894,7 @@ Eval 11-12) plus the reworked Eval Test 8, all registered in `tests/test.py`.
 ## 9. The v3 engine — weight tuning, a genetic algorithm experiment
 
 Sections 2 and 8 fixed every weight by argument: the tiers as powers of ten, the window
-factor by window counts, the threat price by one live-4 per forced defender stone. The
+factor by window counts, the threat weight by one live-4 per forced defender stone. The
 genetic tuner (`tuning/genetic_tuner.py`) replaces argument with measurement: it breeds a
 population of weight configurations initialised around the hand-tuned values, lets the
 individuals compete in real games, and keeps what wins. The champion that survives ships as
@@ -963,7 +996,7 @@ ply 17.
   scored 3.0 and 6.0 of 10 while random neighbours scored 5.0-10.0; the seed-7 champion
   swept 10/10.
 - **Convergent genes.** Every independent winner — both champions and the probe — set
-  `factor_two = 1`, neutralising the 8.1 middle multiplier (a two-window set prices the
+  `factor_two = 1`, neutralising the 8.1 middle multiplier (a two-window set values the
   same as a cramped one); all devalued the triple tier (54-93 vs 100); all kept
   `single = 1`. `threat` and `four` scattered (538-1724, 716-1918) — the landscape is flat
   along those axes at this depth.
@@ -1006,7 +1039,7 @@ neighbours.
    independent configuration, at the deployment depth.
 2. The sharpest genetic signal indicts one 8.1 design choice: every winner neutralised the
    two-window multiplier (`factor_two = 1`) and devalued the triple tier — at depth-3
-   self-play, moderately spacious sets were *overpriced* by the hand design. The win
+   self-play, moderately spacious sets were *overvalued* by the hand design. The win
    mechanism itself (threat forcing) is weight-free, so `THREAT_WEIGHT` moved freely
    (538-1724) without changing a single forced line.
 3. The champions are **not written into the engine** — the hand-tuned baseline lives in
@@ -1033,7 +1066,7 @@ enhancements below.
 
 Section 8.4 defined the root score as horizon-relative by construction, and section 7 named the
 single-cell horizon of the candidate pool; between them they predict exactly what the depth-3
-deployment search does wrong: a forced win that completes one ply past the horizon prices as
+deployment search does wrong: a forced win that completes one ply past the horizon is scored as
 nothing, and the oscillation of root scores across even and odd depths is noise the engine acts
 on. Three enhancements ship to close that gap, behind one new method so the baselines stay
 byte-identical — `search_alpha_beta_with_quiescence` in `search.py` (quiescence + forward
@@ -1060,9 +1093,9 @@ may still extend themselves when the mover *can create* forcing play: pairs crea
 extension must beat. Every expanded node re-checks loudness the same way, up to
 `QUIESCENCE_DEPTH = 6` extension plies. Any pair whose threat count reaches `THREAT_WIN` is a
 verified completion by the mover — the window scan has seen a six — and returns the terminal
-band immediately. Two approximations are priced in and stated plainly: the loud defense pool is
+band immediately. Two approximations are built in and stated plainly: the loud defense pool is
 width-limited (a saving defence ranked 9th or worse is invisible — a false win verdict is
-possible in principle), and a chain still loud at the depth cap prices as its static score.
+possible in principle), and a chain still loud at the depth cap is scored as its static score.
 Nodes count once — the leaf delegates to quiescence before the counter increments.
 
 The 3-threat threshold is the whole design in one number. The defender places exactly two
@@ -1122,7 +1155,7 @@ terminal band.
 | five-run attack, white | plain | 90 / 15 / 10,460 | 249 / 36 / 1,536 | 1,616 / 197 / 11,596 |
 | | enhanced | 87 / 26 / **win** | 103 / 35 / **win** | 110 / 31 / **win** |
 
-**The verdict table is the headline.** On the fork attack, plain depth 2 prices a forced win as
+**The verdict table is the headline.** On the fork attack, plain depth 2 scores a forced win as
 +742; enhanced sees it in 32 nodes. On the completed fork — the defender to move — plain depth 1
 says +742, enhanced depth 1 already returns the honest terminal score. The five-run position
 is the sharpest exhibit: the correct defence (blocking both ends) is found by *every* search at
@@ -1151,7 +1184,7 @@ of one opening.
 **The common trajectory — v4 against v3, move by move.** One deterministic v4-vs-v4 game
 (center opening, white's first reply IIKK, depth 3, 48-ply cap, no win inside it) has every
 decision point re-analyzed by both searches at the deployment depth — one worker process
-per position through `harness.analyze_history` — so the two engines are priced on identical
+per position through `harness.analyze_history` — so the two engines are measured on identical
 positions. Over the 48 decision points plain costs 84,596 nodes (mean 1,762, peak 3,847),
 enhanced 320,038 (mean 6,667, peak 40,262): 3.8x plain's mean. The enhancement changes 27 of
 48 moves and flips not one verdict band — through a full quiet-to-sharp game the verdict
@@ -1168,14 +1201,14 @@ opponents diverge from self-play and the search takes over, by design.
 ### 10.3 Observations
 
 - **Quiescence changes verdicts, not just moves.** In the five-run exhibit the two searches
-  agree on the move at every depth and disagree on the game: enhanced prices the position
+  agree on the move at every depth and disagree on the game: enhanced scores the position
   lost for white (correctly — the follow-up attack is forced) while plain keeps acting on
   oscillating mid-band scores. Score and move decouple: enhanced returns the terminal score
   *and* still plays the double-block, because the block is the best move among lost ones.
 - **The extension horizon is real but bounded.** The fork attack is found one full depth
   earlier than plain (d2 vs d3); the five-run defence needs the whole six-ply extension —
   fork, block, fork, block, unblockable fork, complete — and fits exactly. Chains that stay
-  loud past the cap price as static: the approximation is bounded, and the verdict tests pin
+  loud past the cap are scored as static: the approximation is bounded, and the verdict tests pin
   it.
 - **The 2-vs-3 threshold is a 10x cost lever with no measured strength cost.** Threshold 2:
   12,467 nodes midgame d3, every quiet leaf sprouting refutable live-4 bubbles. Threshold 3:
@@ -1231,7 +1264,7 @@ depth it is the highest-burden, near-zero-gain item on the list. The case, quant
   still does not move: -7% to +2% across the six configurations. One key, one probe and one
   store per node eat exactly what the skipped nodes save, before any collision policy is
   added.
-- **The correctness burden is the real price.** A sound table needs bound types (exact /
+- **The correctness burden is the real cost.** A sound table needs bound types (exact /
   lower / upper — mixing them silently weakens cutoffs), depth- and ply-adjusted terminal
   scores (a stored `MAXINT` must not be replayed as a same-distance win at a different depth,
   or the fastest-mate ordering breaks), and a collision policy (ignore-and-trust risks
@@ -1256,7 +1289,7 @@ depth it is the highest-burden, near-zero-gain item on the list. The case, quant
 
 1. **Quiescence is a correctness feature, not a speed feature.** On three tactical positions
    it corrects the root verdict at depths where plain is wrong or oscillating — a forced win
-   one depth earlier, a lost defence priced honestly at depth 1, a five-run position plain
+   one depth earlier, a lost defence scored honestly at depth 1, a five-run position plain
    never gets right at d2-d4 — for roughly a hundred nodes a position. The cost is 2-2.5x wall
    time at d3 on quiet boards, repaid with interest by pruning at d4 (3,782 vs 11,799 nodes
    midgame, 1.49 vs 1.97 s).
@@ -1325,12 +1358,12 @@ configuration plus this layer. Three stages at the root, in order:
 The battery below is this layer's end-to-end evidence: the one-turn wins cost
 exactly one node (stage 1 answers before any tree search), and the defence entries —
 up to 254,424 nodes — pay for the deepened search plus the screen at every turn of the
-horizon. The layer also has its own unit coverage in the test suite (13.6).
+horizon. The layer also has its own unit coverage in the test suite (14.6).
 
 ### 11.2 Method
 
 The runner lives in the shared scaffolding — `tuning/harness.py`, the same module the
-sections 9, 10, 11 and 12 experiments stand on (13.2) — and is thin over the package's
+sections 9, 10, 11 and 12 experiments stand on (14.2) — and is thin over the package's
 public API: `replay_history` rebuilds the board from move messages, `deployment_player`
 is the deployed engine as a harness player (the opening book first, then `search_v5` at
 depth 3 with the forced-win layer), and `play_from` referees a self-play from an
@@ -1402,14 +1435,21 @@ time on its own.
 **The layer against v4 on the common trajectory.** The recorded game of section 10.2 — the
 v4-vs-v4 self-play, pinned move-for-move — re-analyzed at every decision point by the v4
 engine and the deployed v5, one worker process per position through `harness.analyze_history`
-(`benchmarks/perf_search_v5_layer.ipynb`; the same protocol prices v3 against v4). The layer
+(`benchmarks/perf_search_v5_layer.ipynb`; the same protocol measures v3 against v4). The layer
 pays 4.4x v4's mean nodes (29,486 vs 6,667; totals 1,415,330 vs 320,038): quiet development
-pays the deepening budget, and the defence screen's probe cost spikes twentyfold on the
-sharpest position (233,374 nodes at prefix 34 against v4's 11,612). It changes 35 of 48
-moves and flips six verdict bands — all six wins the layer proves and v4 never prices: five
-stage-1 answers at exactly one node (prefixes 42, 44, 45, 46, 47 — the completing pairs
-`IMJM` and `FKFJ` by mover, ±20,000) and one budgeted-deepening find at 70 nodes (prefix 36).
-The v4 self-play sailed through all six on its way to a 48-ply standstill; the layer sees
+pays the deepening budget, and the sharpest position pays the budget's overshoot — prefix
+34's floor tree is just below the budget (11,612 < 12,000), so the loop launches a depth-4
+iteration that runs to completion at 220,243 nodes; the deepen tree is the 233,374-node
+peak, and stage 1 plus the defence screen account for the remaining 1,519. It changes 35
+of 48 moves and flips six verdict bands — all six wins the layer proves and v4 never scores in the win band:
+five stage-1 answers at exactly one node (prefixes 42, 44, 45, 46, 47 — the
+completing pairs `IMJM` and `FKFJ` by mover, ±20,000) and a sixth stage-1 proof needing 70
+nodes (prefix 36). The notebook's deepening probe replays stage 2 in isolation over all
+48 decision points: 1,621,464 nodes (42 positions reach depth 4, nine reach depth 5), 30
+quiet moves changed, zero verdict flips — the budget buys quiet-move quality; every
+verdict change is a stage-1 proof.
+The v4 self-play played through all six without recognizing them on its way to a 48-ply
+standstill; the layer sees
 the forced wins the enhanced search leaves in the mid-band.
 
 ### 11.4 Observations
@@ -1430,11 +1470,18 @@ the forced wins the enhanced search leaves in the mid-band.
   entries lock black's survival to the measured line (ply 19 of the book line) and
   white's conversion, and the double-run transcript check holds everywhere.
   Consistency is not claimed — it is asserted twice per run.
-- **The layer's price is lumpy, its verdicts are not.** On the common trajectory the layer
+- **The layer's cost is unevenly distributed, its verdicts are not.** On the common trajectory the layer
   costs 4.4x v4's mean nodes but zero where it matters: every proven-win position is answered
-  by stage 1 in a single node — a forced win is cheaper than a quiet move — while the
-  screen's probe spikes (233,374 nodes at one sharp position) are the price of never handing
-  over an armed split pair.
+  by stage 1 in a single node — a forced win is cheaper than a quiet move (the sixth,
+  prefix 36, needs 70) — while the deepening budget's overshoot (233,374 nodes at one sharp
+  position, 94% of it a single depth-4 iteration the budget could no longer stop) is the
+  cost of the loop's rule that an iteration, once started, always runs to completion.
+- **The deepening budget buys quiet moves, never verdicts.** The notebook's stage-2 probe
+  replays the budget loop in isolation over all 48 decision points: 42 positions reach
+  depth 4 and nine reach depth 5 for 1,621,464 nodes, 30 quiet moves change, and not one
+  verdict band flips. All six of the layer's flips over v4 are stage-1 proofs; the probe's
+  total exceeds the deployment's 1,415,330 only because stage 1 steals six late-endgame
+  trees (215,218 nodes) the loop then never runs.
 
 ### 11.5 Results and conclusions
 
@@ -1452,28 +1499,30 @@ the forced wins the enhanced search leaves in the mid-band.
    — independent work items over a read-only engine, one worker process each — now carries
    the fixture games (`run_games`), the trajectory analyses (`analyze_history`) and the
    battery, twelve jobs by default; it bought a 4x wall reduction on the battery, cut the
-   timeline's eight games to about a minute, and the results stay bit-identical everywhere.
+   timeline's twelve games to a few minutes, and the results stay bit-identical everywhere.
 
 ## 12. The version timeline — a final comparison
 
-The project's chapters are five engine versions, each one step of the timeline:
+The project's chapters are six engine versions, each one step of the timeline:
 
 - **v1 — naive min-max**, hand-tuned weights (sections 2-5, the documented baseline);
 - **v2 — alpha-beta** (section 5), same weights: pure algorithmic speed, provably identical play;
 - **v3 — alpha-beta + tuned weights** (section 9): the GA champion in place of the hand-tuned set;
 - **v4 — quiescence, forward pruning and the opening book** (section 10): the tuned weights
   *plus* the search enhancements;
-- **v5 — the forced-win layer** (section 11), the current deployment: proven offense, budgeted
-  deepening and the defence screen — the position battery (11.3) is its end-to-end evidence.
+- **v5 — the forced-win layer** (section 11): proven offense, budgeted deepening and the
+  defence screen;
+- **v6 — the parallel split root** (section 13), the current deployment: every root
+  candidate an independent full-window job, a node budget in place of v5's — the same book
+  and stage-1 layer underneath.
 
-`benchmarks/perf_versions_v1_v4.ipynb` measures all four at the deployment depth (3): who wins —
-every adjacent pairing of the timeline plus the full journey v1-vs-v4, one deterministic game
+`benchmarks/perf_versions_v1_v6.ipynb` measures all six at the deployment depth (3): who wins —
+every adjacent pairing of the timeline plus the full journey v1-vs-v6, one deterministic game
 per color assignment through the section-9 protocol (center opening, 60-ply cap, weights
 installed per search by the GA referee's own `apply_weights`) — and what it costs — the
-section-10 positions plus the opening reply, where the book answers instead of a search.
-Reruns reproduce every number exactly. The fifth version — v5, the deployed forced-win layer —
-stands outside this ladder: no earlier version plays against it in that notebook, and its
-end-to-end evidence is the position battery of section 11 (11.3).
+section-10 positions plus the opening reply, where the book answers instead of a search, at
+depths 3 and 4 (the v5/v6 rows are *budget answers*: the depth is the floor, the engine
+deepens while its node budget fits). Reruns reproduce every number exactly.
 
 ### 12.1 Who is winning
 
@@ -1485,25 +1534,38 @@ end-to-end evidence is the position battery of section 11 (11.3).
 | v3 tuned weights | v2 alpha-beta | black wins | **v3** | 36 |
 | v3 tuned weights | v4 deployed | white wins | **v4** | 19 |
 | v4 deployed | v3 tuned weights | black wins | **v4** | 26 |
-| v1 min-max | v4 deployed | white wins | **v4** | 19 |
-| v4 deployed | v1 min-max | black wins | **v4** | 26 |
+| v4 deployed | v5 forced-win layer | white wins | **v5** | 37 |
+| v5 forced-win layer | v4 deployed | white wins | **v4** | 19 |
+| v5 forced-win layer | v6 parallel split | white wins | **v6** | 19 |
+| v6 parallel split | v5 forced-win layer | white wins | **v5** | 19 |
+| v1 min-max | v6 parallel split | white wins | **v6** | 19 |
+| v6 parallel split | v1 min-max | black wins | **v6** | 30 |
 
 Reading it as a knockout ladder: **v1 and v2 are the same player** — the pairing splits 1-1
 and both games are literally the section-9 baseline mirror (identical moves, ply 38, black
-wins): alpha-beta changes the price of a move, never the move. **v3 beats v2 in both
+wins): alpha-beta changes the cost of a move, never the move. **v3 beats v2 in both
 colors** — weights alone, reproducing section 9's champion head-to-head down to the plies
 (17 and 36). **v4 beats v3 in both colors** — section 10's enhancement carries to full
-games, not just verdict tables. **v4 beats v1 in both colors**, and its games against v1 are
-move-for-move identical to its games against v3: once v4's forcing lines take over, the
-opponent's weights stop changing its choices — section 9.3's weight-invariance, observed
-again from the other side. The lone regularity that survives every unequal pairing: no
-version ever lost to an earlier one.
+games, not just verdict tables. **v4 and v5 split by color** — white wins both games of
+their pairing on the book line: the layer fires only when a forced win exists, and until
+white's converting attack both engines play the same moves (five book hits each side,
+both games). **v5 and v6 are the same player** — the pairing is one game played twice,
+identical move for move in both color assignments (the notebook asserts it): the split
+root changes the cost of a move, never the move. **v6 beats v1 in both colors** (19 and
+30 plies) on the full journey — and its game as white is move-for-move the v1-vs-v5 game,
+the regression evidence of 13.2. The lone regularity that survives every unequal
+pairing: no version ever lost to an earlier one.
 
 ### 12.2 What it costs
 
 One search per position per version, one row per measurement, deterministic: nodes, wall
 time, and the fixed black-perspective root score. `book` marks the rows the opening book
-answered without a search.
+answered without a search. The v1-v4 rows are fixed-depth searches; the v5/v6 rows are
+**budget answers** — the depth is the floor, the engine deepens while its node budget fits,
+so their node counts buy more depth than the row's label (and the reached depth is the
+notebook's to print). Their wall times come from a separate quiet-machine pass of the
+same battery; single-run wall times vary between machines and runs (the node counts are
+deterministic and do not).
 
 At the deployment depth 3:
 
@@ -1513,26 +1575,38 @@ At the deployment depth 3:
 | | v2 alpha-beta | 2,830 | 216 | -303 |
 | | v3 tuned weights | 2,918 | 220 | -282 |
 | | v4 deployed | 0 | 0 | **book** |
+| | v5 forced-win layer | 0 | 0 | **book** |
+| | v6 parallel split | 0 | 0 | **book** |
 | opening scatter, white | v1 min-max | 27,931 | 1,778 | -510 |
 | | v2 alpha-beta | 1,182 | 114 | -510 |
 | | v3 tuned weights | 1,593 | 140 | -436 |
 | | v4 deployed | 1,668 | 322 | -386 |
+| | v5 forced-win layer | 76,694 | 26,225.0 | -336 |
+| | v6 parallel split | 36,912 | 9,057.6 | -38 |
 | midgame, white | v1 min-max | 27,931 | 1,927 | -3,097 |
 | | v2 alpha-beta | 1,390 | 196 | -3,097 |
 | | v3 tuned weights | 1,425 | 190 | -2,342 |
 | | v4 deployed | 1,458 | 489 | -703 |
+| | v5 forced-win layer | 23,420 | 9,501.4 | -1,060 |
+| | v6 parallel split | 52,283 | 17,400.7 | -617 |
 | fork attack, black | v1 min-max | 27,931 | 2,021 | **20,000** |
 | | v2 alpha-beta | 78 | 19 | **20,000** |
 | | v3 tuned weights | 78 | 19 | **20,000** |
 | | v4 deployed | 78 | 26 | **20,000** |
+| | v5 forced-win layer | 18 | 47.2 | **20,000** |
+| | v6 parallel split | 18 | 47.4 | **20,000** |
 | fork completed, white | v1 min-max | 24,631 | 2,009 | **20,000** |
 | | v2 alpha-beta | 351 | 45 | **20,000** |
 | | v3 tuned weights | 347 | 45 | **20,000** |
 | | v4 deployed | 207 | 111 | **20,000** |
+| | v5 forced-win layer | 208 | 112.3 | **20,000** |
+| | v6 parallel split | 208 | 111.4 | **20,000** |
 | five-run attack, white | v1 min-max | 14,461 | 982 | 1,577 |
 | | v2 alpha-beta | 249 | 36 | 1,577 |
 | | v3 tuned weights | 249 | 37 | 1,536 |
 | | v4 deployed | 103 | 34 | **20,000** |
+| | v5 forced-win layer | 104 | 35.3 | **20,000** |
+| | v6 parallel split | 104 | 35.5 | **20,000** |
 
 At depth 4 (min-max omitted — its full d4 trees are minutes long):
 
@@ -1541,21 +1615,33 @@ At depth 4 (min-max omitted — its full d4 trees are minutes long):
 | opening reply, white | v2 alpha-beta | 24,533 | 2,599 | +303 |
 | | v3 tuned weights | 25,469 | 2,645 | +282 |
 | | v4 deployed | 0 | 0 | **book** |
+| | v5 forced-win layer | 0 | 0 | **book** |
+| | v6 parallel split | 0 | 0 | **book** |
 | opening scatter, white | v2 alpha-beta | 9,150 | 1,293 | -66 |
 | | v3 tuned weights | 15,964 | 2,310 | -40 |
 | | v4 deployed | 7,581 | 2,388 | -38 |
+| | v5 forced-win layer | 75,026 | 25,546.0 | -336 |
+| | v6 parallel split | 234,146 | 79,222.8 | -336 |
 | midgame, white | v2 alpha-beta | 11,640 | 1,888 | -301 |
 | | v3 tuned weights | 11,799 | 1,958 | -305 |
 | | v4 deployed | 3,782 | 1,491 | -617 |
+| | v5 forced-win layer | 21,962 | 9,183.4 | -1,060 |
+| | v6 parallel split | 207,618 | 72,658.7 | -1,060 |
 | fork attack, black | v2 alpha-beta | 350 | 45 | **20,000** |
 | | v3 tuned weights | 347 | 45 | **20,000** |
 | | v4 deployed | 179 | 66 | **20,000** |
+| | v5 forced-win layer | 18 | 48.6 | **20,000** |
+| | v6 parallel split | 18 | 48.2 | **20,000** |
 | fork completed, white | v2 alpha-beta | 577 | 180 | **20,000** |
 | | v3 tuned weights | 573 | 178 | **20,000** |
 | | v4 deployed | 349 | 113 | **20,000** |
+| | v5 forced-win layer | 350 | 115.8 | **20,000** |
+| | v6 parallel split | 350 | 116.1 | **20,000** |
 | five-run attack, white | v2 alpha-beta | 1,616 | 192 | 11,613 |
 | | v3 tuned weights | 1,616 | 192 | 11,596 |
 | | v4 deployed | 110 | 31 | **20,000** |
+| | v5 forced-win layer | 111 | 32.5 | **20,000** |
+| | v6 parallel split | 111 | 32.8 | **20,000** |
 
 ### 12.3 Observations
 
@@ -1564,7 +1650,7 @@ At depth 4 (min-max omitted — its full d4 trees are minutes long):
   agreeing line by line; what alpha-beta buys is the node count: 10x on the opening reply,
   24x on the scatter, 358x on the fork attack, where the cutoff chain fires almost
   immediately. The min-max rows are position-blind — 27,931 nodes whenever the candidate
-  pool is full — because a search with no cutoffs prices the whole tree whatever the
+  pool is full — because a search with no cutoffs must examine the whole tree whatever the
   position; that is also why they have no depth-4 rows.
 - **The naive engine is wrong where it matters, and slower too.** On the five-run position
   v1's verdict is 1,577 at depth 3 and (like v2/v3) still wrong at depth 4 — every
@@ -1573,8 +1659,8 @@ At depth 4 (min-max omitted — its full d4 trees are minutes long):
   engine spends ~2.3 s per move — the pruning pays for the quiescence and then some: the
   final engine is both stronger *and* faster than the first one.
 - **The weights step is visible in the scores, not the moves.** v2 and v3 mostly pick the
-  same moves (`FJII`, `HJBJ`) but price them differently: -510 vs -436, -3,097 vs -2,342 —
-  and the champion converts the pricing into the 2-0 game record. Section 9's gene table
+  same moves (`FJII`, `HJBJ`) but score them differently: -510 vs -436, -3,097 vs -2,342 —
+  and the champion converts the scoring difference into the 2-0 game record. Section 9's gene table
   explains the mechanism (the devalued triple tier, the neutralised two-window factor).
 - **The opening-reply rows are the whole book story:** the reply costs v3 2,918 nodes /
   220 ms at depth 3 and 25,469 nodes / 2.6 s at depth 4; v4's book rows answer it in zero —
@@ -1587,6 +1673,17 @@ At depth 4 (min-max omitted — its full d4 trees are minutes long):
 - **The engine's own cost profile at deployment:** v3 ~0.2 s per quiet move, v4 ~0.5 s on
   quiet positions and up to ~2.3 s through tactical middlegames — inside GUI-interactive
   budgets, and section 10's economics hold in full games, not just fixed positions.
+- **The layer's rows are stage-1 answers and budget answers.** The fork attack converts
+  at 18 nodes (against v4's 78-tree-node proof: stage 1 answers before any tree is
+  built); the five-run block is exact at 104/111 nodes; and the quiet rows pay the
+  deepening budget — v5's 76,694 on the opening scatter is floor-3-plus-deepening, not a
+  fixed-depth-3 tree. The budget buys depth the fixed rows cannot name, and the tactics
+  rows show it costs almost nothing where the win is proven.
+- **The split's rows measure the same answers.** On the opening scatter at depth 4 both
+  v5 (75,026) and v6 (234,146) answer `IKKP` at -336 — v6's budget simply ran one
+  iteration deeper (floor 4 to depth 5) before stopping, confirming v5's answer from a
+  deeper tree. The divergence class of 13.3 — budget boundaries, never tactics — shows
+  here in a single row pair.
 
 ### 12.4 Conclusions
 
@@ -1600,21 +1697,185 @@ At depth 4 (min-max omitted — its full d4 trees are minutes long):
 3. The regularities across chapters are consistent: deterministic protocols give complete
    records, not samples; strength conclusions remain protocol-relative (center opening,
    depth 3, 60-ply cap); and every equal-strength pairing still leans black.
-4. A scope note on "the deployed engine": the v4 of this timeline is the section-10
-   enhancements — quiescence, forward pruning, the book. The engine that ships today
-   plays `search_v5` on top of that configuration (the forced-win layer, section 11.1),
-   a fifth configuration these tables do not cover; its end-to-end behaviour is measured
-   by the section-11 battery instead. The versions stay cleanly separated: each timeline
-   row pins its search callable, weights and book, and the later layer cannot reach them.
+4. A scope note on "the deployed engine": the v6 of this timeline *is* the deployment —
+   the parallel split root of section 13 on top of the v5 stack, served compiled in
+   wall-budget mode. The versions stay cleanly separated: each timeline row pins its
+   search callable, weights and book, and the split's own economics — the full-window
+   cost, the node budget, the wall budget — are section 13's business, measured there
+   (13.3) against the same trajectory this ladder shares.
 
-## 13. Deliverables — the reusable inventory
+## 13. The v6 deployment — the parallel split root, the compiled build, and the external benchmark
+
+The v5 of chapter 11 answers in one process: its root shares a single
+`(MININT, MAXINT)` window across the candidates and lets alpha-beta cutoffs prune whole
+subtrees at the top level. The v6 deployment changes exactly that root: **the parallel
+split root** — every root candidate becomes an independent job searched with a full
+window, the results collected and argmaxed. This chapter ships the root (13.1), the
+correctness story its first version needed (13.2), the measurements (13.3), the compiled
+build that serves it (13.4), and the external benchmark against the reference Cloudict
+engine that the section-11 specification was always stated against (13.5).
+
+### 13.1 The split root
+
+`connect6/parallel.py` exports `search_v6`, the root search `game_engine.py` plays —
+the v5 stack underneath (book, tuned weights, quiescence, stage-1 forced-win offense,
+the defence screen), a different root on top:
+
+1. **The root split.** The scored candidate list is generated once, exactly as the
+   sequential root generates it; then every candidate's subtree is searched as an
+   independent job with the full window `(MININT, MAXINT)` — no sibling cutoffs at the
+   root — and the results are collected and argmaxed (min for the minimizing side).
+   With no cutoffs to collect, the tree is larger; in exchange every candidate's cost
+   is paid in parallel. `V6_JOBS` worker processes serve the split (default: all
+   logical cores; `V6_JOBS=1` runs the same split inline, which is what every
+   deterministic measurement in this chapter pins).
+2. **The answer is the shared window's answer.** At equal depth the split returns the
+   move and score the shared-window root proves — the argmax over the same subtrees
+   (V6 Test 1 pins this on four positions). Worker count changes the cost of a move,
+   never the move (V6 Test 4: one, three and pooled workers give identical answers).
+3. **The node budget.** `V6_NODE_BUDGET = 36000` — 3x v5's 12,000 — replaces the
+   deepening stop rule: the depth floor is searched first, then the loop deepens while
+   the cumulative node count fits, each iteration's cost predicted from the last by
+   `V6_GROWTH_FACTOR = 12`. A budget in nodes, not seconds, so reruns stay exact.
+4. **The wall mode.** The compiled engine serves the same root under a wall budget
+   (`V6_TIME_BUDGET = 28` s per move, `depth d` the floor): the protocol the external
+   benchmark drives, and the deployment's interactive guarantee.
+
+### 13.2 The terminal break — the bug the ladder caught
+
+The split's collection loop has one subtle invariant: *when may it stop early?* Its
+first version answered "when the running best score is terminal" —
+`best_score in (MAXINT, MININT)` — which is wrong for the minimizing side in a way no
+unit case covered: the minimizer's running best **starts at** `MAXINT`, so the first
+candidate returning +20,000 — the mover's *worst* score, not a win — left the best
+unchanged and tripped the terminal check, abandoning the remaining candidates and
+declaring a fine position lost. The screen never ran (terminal answers skip it), and
+the engine played a garbage move. The v1-vs-v6 ladder game caught it in deployment:
+at white's fifth move the buggy split answered `MJNJ` claiming -20,000 in 632 nodes
+where v5 answers `MJHL` at -402 in 20,583 — and v1, the naive baseline, won a game it
+had no business winning.
+
+The fix is one line and one invariant: the loop breaks only on **the mover's own
+proven win** — `MAXINT` for the maximizing side, `MININT` for the minimizing side —
+which is exactly the condition the shared-window root's cutoffs implement. The guards:
+the position itself is now V6 Test 1's fourth case (a minimizing root with a losing
+first candidate and surviving later candidates), and the ladder re-run is the
+regression evidence — the v1-vs-v6 game is move-for-move the v1-vs-v5 game, and v6
+beats v1 in both colors (12.1).
+
+### 13.3 Measurements
+
+The notebook `benchmarks/perf_search_v6_split.ipynb` is the executable record; every
+number below is asserted there, weights pinned, `V6_JOBS=1`.
+
+**The common trajectory.** The 48-decision-point v4 self-play, re-analyzed at every
+decision point by v5 and v6, one worker process per position: v6 totals 3,288,692
+nodes against v5's 1,415,330 — **2.32x, the full-window cost** — and changes 9 of 48
+moves with **zero verdict-band flips**; the five one-node stage-1 answers reproduce at
+exactly one node (the layer runs before any tree, so proven wins cost the same in
+both roots), and the peaks are the same shape (233,374 at prefix 34; 259,118 at 41).
+The nine divergences are budget boundaries — quiet moves where the split's cost
+stopped the deepening one iteration earlier or later than v5's own rule — never
+tactics.
+
+**The cost per iteration.** Across the trajectory's forty-three tree-building decision
+points (the other five are one-node stage-1 answers) the split iteration costs 1.00x-26.2x
+the shared window's (median 5.8x at the floor depth, 3.1x one deeper): the ratio is the
+cutoffs the position allows, so it swings with move ordering — a quiet position wastes
+little, a sharp one wastes a lot. The worst floor spike is 258,821 nodes (prefix 41)
+against v5's entire 12,000-node budget — no budget multiple makes the floor universal, so
+the constant was chosen end-to-end: 36,000 and 54,000 were both measured over the whole
+trajectory, both diverge on 9 of 48 moves with zero verdict flips, and the larger only
+spends more (3.63x v5's nodes against 2.32x). The cheaper budget ships:
+`V6_NODE_BUDGET = 36000`.
+
+**The regression fixture's cost exhibit.** On the 13.2 position the two roots cost
+the same answers: depth 3 costs the shared window 1,951 nodes and the split 12,657
+(6.49x); depth 4 costs 18,626 and 54,957 (2.95x); and both deployed roots answer
+`MJHL` at -402.
+
+### 13.4 The compiled build
+
+The engine ships compiled: mypyc builds the whole `connect6` package into extension
+modules, and a launcher (`dist/Connect6_Butovka_Ahmed`) pins the staged weights and
+book and serves the same text protocol — its worker processes import the compiled
+package too. `scripts/verify_compiled.py` re-runs the fixed-depth v6 root on the
+documented positions interpreted and compiled and asserts identical moves, scores and
+node counts; the wall speedup on that work is **1.92x** (36.37 s interpreted against
+18.94 s compiled). Compilation changes the cost of a move, never the move — the same
+invariant as every step of this timeline.
+
+### 13.5 The external benchmark — the Cloudict tournament
+
+The section-11 specification was stated against the reference Cloudict engine; the
+tournament plays it. `benchmarks/tournament_cloudict.py` plays thirty-six games — six
+openings (the recorded game's first six white replies to the center), each as black and
+as white, at three depth floors (3, 4, 5) — both engines receiving the same depth
+command. Our side is the compiled build in budget mode (the floor is the depth, the
+wall budget is `V6_TIME_BUDGET`); Cloudict runs its fixed-depth search with its
+always-on VCF. Every game is recorded move by move (message, wall, nodes, score) to
+`benchmarks/tournament_cloudict.json`.
+
+The structural asymmetry the games expose: **our forced-win layer searches our own
+wins; Cloudict's searches its own at every node.** Our stage 1 proves *our* forced wins
+before any tree, and the screen vets against *immediate* handovers — but a forced win
+built by the opponent over three or four turns is only visible to our tree, and the
+floor's horizon is shorter than Cloudict's VCF. At floor 3 the recorded losses all show
+the same signature: our score positive and stable (e.g. +716) one move before the
+position is proven lost (-20,000 found instantly by the screen the next move).
+
+**The measured matrix: 0-36.** Cloudict won every game at every floor — the honest
+external verdict, and the first result of the whole timeline that goes against the
+deployment:
+
+| floor | record | game plies | our nodes/move | our wall/move | cloudict wall/move |
+|---|---|---|---|---|---|
+| 3 | 0-12 | 10-32 (median 15) | 114,657 mean (max 704,218) | 6.1 s | 0.1 s |
+| 4 | 0-12 | 11-20 (median 18) | 91,399 mean (max 318,939) | 4.7 s | 0.3 s |
+| 5 | 0-12 | 9-20 (median 15) | 96,132 mean (max 568,510) | 4.5 s | 0.9 s |
+
+Three readings, all from the per-move records. **The losses are tactical, not
+positional drift**: 42 of our moves score in the terminal band — the engine sees each
+loss the moment it is proven and says so; before that the records show stable positive
+scores while Cloudict's forced win is still beyond the horizon. **The budget
+under-spends by design**: our moves average 4.5-6.1 s of the 28 s wall budget because
+the growth factor stops the deepening once the next iteration is predicted not to fit —
+and more time would not buy the missing horizon anyway: the wins Cloudict converts are
+forced-win chains, invisible to a bounded tree at these floors. **The engine is
+robust under fire**: empty stderr across every spawn, no protocol violations, the book
+answered three openings, and the single hang of the whole run was Cloudict's own (a
+600 s timeout, caught and replayed by the hardened referee). The gap this matrix
+measures — an opponent-side forced-win search — is the next iteration's work, not this
+deployment's regression.
+
+### 13.6 Results and conclusions
+
+1. **The split root keeps the stack's answers** — 39 of 48 moves identical, zero
+   verdict flips, every proven win found at one node — at 2.32x the node cost. The
+   parallelism changes the cost of a move, never the move.
+2. **The budget is the honest broker** — a node budget keeps reruns exact; the
+   wall-budget mode adapts the same root to interactive play, and the empirical
+   constant (36,000, measured against 54,000) covers the floor iteration's cost almost
+   everywhere.
+3. **The bug story is the process story** — the ladder caught a wrongness no unit case
+   covered, the fix was the shared window's own invariant, and the fixture now pins
+   it forever.
+4. **The external benchmark closes the specification** — the Cloudict matrix measures
+   the deployment against the reference opponent it was specified against, at three
+   floors, both colors, with per-move records. The measured matrix is **0-36**: the
+   reference's always-on VCF out-horizons the deployment at every floor. The gap the
+   matrix isolates — an opponent-side forced-win search — is the next iteration's
+   headline, and the instrument that measured it (a hardened referee with per-move
+   records and spawn retries) is reusable as-is.
+
+## 14. Deliverables — the reusable inventory
 
 The evaluation built more than an engine: it built the instruments that measured it. This
 closing chapter inventories the functionality, developed for the chapters above, that
 another project — or the next iteration of this one — can pick up and reuse. Every item
 points at the artefact that carries it; none of it needs to be taken on trust, only rerun.
 
-### 13.1 The engine as a library
+### 14.1 The engine as a library
 
 `connect6/` is importable as a package whose only import-time side effect is reading the
 weight file named by `WEIGHTS_FILE` (the champion, with the hand-tuned fallback). What the
@@ -1631,14 +1892,17 @@ package exports:
 - **One search loop, three searches** — min-max, alpha-beta and the enhanced variant share
   the single `_alpha_beta` loop behind two flags (`prune`, `enhanced`): a new variant is a
   flag away, not a fork.
-- **The forced-win layer** — `vcf.search_v5`, the deployed root: proven forced-win
-  offense, budgeted deepening, and the defence screen (11.1).
-- **The opening book**, with parity position keys and silent fallback (13.4).
+- **The forced-win layer** — `vcf.search_v5`: proven forced-win offense, budgeted
+  deepening, and the defence screen (11.1).
+- **The parallel split root** — `parallel.search_v6`, the deployed root (13.1): every
+  root candidate an independent full-window job, the same stack underneath, one
+  `V6_JOBS` environment knob for the worker count.
+- **The opening book**, with parity position keys and silent fallback (14.4).
 
 The reuse pattern is the one this repository uses everywhere — the test suite, the tuning
 scripts, the notebooks: pin `WEIGHTS_FILE`/`BOOK_FILE`, import, call.
 
-### 13.2 The tuning harness
+### 14.2 The tuning harness
 
 `tuning/harness.py` is the scaffolding the experiments of sections 9, 10, 11 and 12 stand on, factored
 out so the next experiment starts at the measurement instead of the plumbing:
@@ -1679,7 +1943,7 @@ print(record.winner, record.plies, record.black.nodes, record.white.nodes)
 The GA referee, the book generator, the battery and all measurement notebooks are thin
 layers over this one module.
 
-### 13.3 The genetic weight tuner
+### 14.3 The genetic weight tuner
 
 `tuning/genetic_tuner.py` is a small, seeded GA for any linear-weight evaluator:
 
@@ -1694,7 +1958,7 @@ Its public surface (`Weights`, `BASE`, `apply_weights`, `fmt`, `play_game`) is w
 `run_experiment.py` and the harness import; tuning a different evaluator is a matter of
 swapping the gene ranges and the repair bounds.
 
-### 13.4 The opening-book machinery
+### 14.4 The opening-book machinery
 
 `connect6/opening_book.py` plus `tuning/generate_opening_book.py`:
 
@@ -1707,25 +1971,32 @@ swapping the gene ranges and the repair bounds.
 - the generator produces books by self-play, configurable end to end (`--depth`,
   `--plies`, `--openings`, `--weights`, `--out`) — one command, about a minute.
 
-### 13.5 The benchmark notebooks
+### 14.5 The benchmark notebooks
 
 `benchmarks/` carries two patterns beyond its results:
 
 - **model-fitted scaling plots** — the depth notebooks estimate the per-node cost from the
   depth-1 measurement, then draw the theoretical `O(B^depth)` curve (and the ideal
   `O(B^(depth/2))` guide) through the measured points: the figure is the hypothesis test;
-- **assert-validated measurements** — the section-10/11/12 notebooks pin weights before
+- **assert-validated measurements** — the section-10/11/12/13 notebooks pin weights before
   importing the engine, print the documented tables, and assert every deterministic field
   (nodes, scores, moves, game outcomes, book hits) against this document. Executing the
   notebook *is* the validation; the stored outputs are executable documentation of the
   results.
+- **prepared data over inline generation** — the position battery (`battery.json`) and the
+  common trajectory (`trajectory.json`) are committed fixtures the notebooks load; each
+  generation claim is owned in exactly one place (the battery runner; the v4 notebook,
+  the trajectory's birthplace, regenerates the game and asserts identity with the
+  fixture).
 
-Headless execution needs no IDE: `nbclient` with a kernelspec over the project venv reruns
-them from the command line — that is how their stored outputs were produced.
+Headless execution needs no IDE: `scripts/nbclient_run.py` — nbclient with a kernelspec
+over the project venv — reruns them from the command line and writes the stored outputs
+back into the notebook; that is how every stored output quoted in this document was
+produced.
 
-### 13.6 The deterministic test suite
+### 14.6 The deterministic test suite
 
-`tests/test.py` — 89 tests over the whole pipeline in pipeline order — contributes two
+`tests/test.py` — 97 tests over the whole pipeline in pipeline order — contributes two
 patterns worth copying:
 
 - **pin the configuration before import** — `WEIGHTS_FILE`/`BOOK_FILE` are set before the
@@ -1733,18 +2004,18 @@ patterns worth copying:
   the ambient environment;
 - **pin the behaviour, not the implementation** — alpha-beta must equal min-max's scores
   and moves with strictly fewer nodes; quiescence must find the fork win one horizon early
-  and price lost defences at the terminal band; forward pruning must cut depth-4 nodes; the
+  and score lost defences at the terminal band; forward pruning must cut depth-4 nodes; the
   book must reject occupied or invalid entries and fall back to search. The regressions the
   chapters argued for are executable.
 
-### 13.7 The position battery
+### 14.7 The position battery
 
 `benchmarks/battery.json` + the battery runner in `tuning/harness.py` + the assert-validated notebook
 `benchmarks/perf_position_battery.ipynb` (section 11): nineteen curated positions —
 forced wins in one to three turns, defences against the same horizons, and opening
 lines with a double-run consistency check — each a deterministic regression lock on
 the deployed engine's whole behaviour. The battery is data plus a runner — part of the
-section-13.2 harness, thin over the package's public API, no experiment state, no
+section-14.2 harness, thin over the package's public API, no experiment state, no
 process plumbing, one command (`python tuning/harness.py battery`) to
 re-verify everything this document claims about wins, defence and openings — and it
 parallelises: the entries are independent, so the runner defaults to twelve worker
