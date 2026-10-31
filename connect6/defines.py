@@ -8,7 +8,7 @@ from typing import Final
 GRID_NUM: Final = 21  # Size of the board array: 19x19 cells plus a border ring.
 MSG_LENGTH: Final = 512  # Max length of one protocol message.
 LOG_FILE: Final = "tia-engine.log"
-ENGINE_NAME: Final = "TIA.Connect6_end_game_detect_Butovka_Hasnaat"
+ENGINE_NAME: Final = "Connect6_Butovka_Ahmed"
 
 # Static evaluation bounds; also used as terminal win/draw scores.
 MAXINT: Final = 20000

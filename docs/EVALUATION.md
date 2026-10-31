@@ -174,7 +174,11 @@ This is what makes move choice sensible without any hand-written rules: extendin
 
 One evaluation sweeps 361 cells x 4 axes; each `measure_line` walk visits at most ~20 cells (run + free before hitting border/opponent). A handful of thousands of cell visits — microseconds. The benchmark notebooks measure the real numbers and plot them.
 
-## 5. The evaluator inside the min-max search
+## 5. The v1-v2 engine — the evaluator inside the min-max search
+
+Two versions of the timeline (section 12) ship in this chapter: **v1**, the naive min-max
+baseline, and **v2**, the same engine with alpha-beta pruning — pure speed, provably
+identical play.
 
 The evaluation function is consumed by the search tree methods (`search.search_min_max` /
 `search.search_alpha_beta`, connect6/search.py) — both share one unified `_alpha_beta` loop.
@@ -854,13 +858,14 @@ Reading it:
 
 The full suite grew from 52 to 67 tests: 15 new (Candidate Ranking 1-3, Threat 1-10,
 Eval 11-12) plus the reworked Eval Test 8, all registered in `tests/test.py`.
-## 9. Weight tuning — a genetic algorithm experiment
+## 9. The v3 engine — weight tuning, a genetic algorithm experiment
 
 Sections 2 and 8 fixed every weight by argument: the tiers as powers of ten, the window
 factor by window counts, the threat price by one live-4 per forced defender stone. The
 genetic tuner (`tuning/genetic_tuner.py`) replaces argument with measurement: it breeds a
 population of weight configurations initialised around the hand-tuned values, lets the
-individuals compete in real games, and keeps what wins.
+individuals compete in real games, and keeps what wins. The champion that survives ships as
+**v3** of the timeline (section 12) — the same alpha-beta engine, tuned weights installed.
 
 ### 9.1 Method
 
@@ -1021,7 +1026,10 @@ neighbours.
    genome — zero-variance and exactly reproducible, but it quantifies dominance over that
    population and protocol, not absolute strength against the field.
 
-## 10. Search enhancements — quiescence, forward pruning, and an opening book
+## 10. The v4 engine — search enhancements: quiescence, forward pruning, and an opening book
+
+This chapter ships **v4** of the timeline (section 12): the tuned v3 weights plus the three
+enhancements below.
 
 Section 8.4 defined the root score as horizon-relative by construction, and section 7 named the
 single-cell horizon of the candidate pool; between them they predict exactly what the depth-3
@@ -1140,6 +1148,17 @@ The reply-ply width is the entire difference between the last two rows. With the
 schedule the twelve games run 3-95 s each (25-97 stones); the lone loss is one color assignment
 of one opening.
 
+**The common trajectory — v4 against v3, move by move.** One deterministic v4-vs-v4 game
+(center opening, white's first reply IIKK, depth 3, 48-ply cap, no win inside it) has every
+decision point re-analyzed by both searches at the deployment depth — one worker process
+per position through `harness.analyze_history` — so the two engines are priced on identical
+positions. Over the 48 decision points plain costs 84,596 nodes (mean 1,762, peak 3,847),
+enhanced 320,038 (mean 6,667, peak 40,262): 3.8x plain's mean. The enhancement changes 27 of
+48 moves and flips not one verdict band — through a full quiet-to-sharp game the verdict
+exhibits stay where the curated positions put them, and what the enhancement buys is
+different moves. The same recorded game, pinned move-for-move, serves the v5 comparison of
+section 11.3; the notebook plots both per-position node curves.
+
 **Book.** The engine probe: `move JJ` against the shipped book answers `Book: IIKK` /
 `move IIKK` with no search line — the depth-4 opening search it replaces costs ~2.4 s (the
 opening row above). A `move` off the book lines (e.g. `LKKK` there) falls straight back to the
@@ -1171,6 +1190,9 @@ opponents diverge from self-play and the search takes over, by design.
   every non-cutoff leaf); at d4 the pruning pays it back — midgame d4 runs 3,782 nodes /
   1.49 s against plain's 11,799 / 1.97 s. The deployment depth 3 is the *worst* depth for the
   enhancement's economics, and it is still the right trade for a tactical game.
+- **On a real game the enhancement changes moves, not verdicts.** 27 of 48 trajectory
+  decisions differ from plain's and no verdict band flips: the terminal-band exhibits live in
+  the curated positions, while a full game pays 3.8x plain's mean nodes for its move choices.
 - **Determinism cuts both ways.** Every number here is exactly reproducible — and exactly one
   sample of its fixture: the 12 games are 12 fixed pairings, not 12 draws from a distribution.
   The conclusions are protocol-relative (center opening, depth 3, six openings), the same
@@ -1185,25 +1207,30 @@ depth it is the highest-burden, near-zero-gain item on the list. The case, quant
   *two* stones of one color, and the mover is pinned by the parity arithmetic above — a
   position can only repeat if the same two-stone sets were played in a different order, and
   the interleave space is a few swaps, nothing like chess's free reordering. Instrumenting a
-  faithful replica of the plain search (identical scores, node counts within 10%) to record
-  every visited position's inventory key:
+  replica of the plain search — same loop, same candidate order, same cutoffs, its node
+  counts asserted identical to the package — to record every visited position's inventory
+  key:
 
   | position | depth | nodes | unique positions | revisits |
   |---|---|---|---|---|
-  | opening | 3 | 1,593 | 1,545 | 48 (**3.0%**) |
-  | opening | 4 | 15,964 | 15,168 | 796 (**5.0%**) |
-  | midgame | 3 | 1,300 | 1,102 | 198 (**15.2%**) |
-  | midgame | 4 | 11,687 | 10,201 | 1,486 (**12.7%**) |
+  | opening scatter | 3 | 1,593 | 1,545 | 48 (**3.0%**) |
+  | opening scatter | 4 | 15,964 | 15,169 | 796 (**5.0%**) |
+  | midgame | 3 | 1,425 | 1,217 | 208 (**14.6%**) |
+  | midgame | 4 | 11,799 | 10,312 | 1,487 (**12.6%**) |
+  | five-run attack | 3 | 249 | 249 | 0 (**0.0%**) |
+  | five-run attack | 4 | 1,616 | 1,451 | 165 (**10.2%**) |
 
-  A *perfect* transposition table saves at most the revisit column — 3-5% of nodes in
-  openings, 13-15% in the most tactical midgame measured — and only the *search* portion of
-  each saved node (the move is still made and scored in the parent).
-- **The hash upkeep eats the savings.** `position_key` (441-cell scan, 0.007 ms) costs a fifth
-  of one `evaluate` call (0.034 ms) *per node*, before any table insert, lookup, or collision
-  policy; an incremental Zobrist scheme is cheaper per move but pays interpreted-Python
-  overhead per stone placed and removed — the make/unmake loop already runs at ~70 µs/node
-  total. Saving ~5% of nodes while taxing ~100% of them with bookkeeping is a net loss at
-  d3 openings and roughly a wash in the midgame.
+  A *perfect* transposition table saves at most the revisit column — 0-5% of nodes in
+  openings, at most 14.6% across the tactical set — and only the *search* portion of each
+  saved node (the move is still made and scored in the parent).
+- **The realized table is a measured wall-clock wash.** A sound transposition table on the
+  replica — bound types exact/lower/upper, depth-conditioned reuse, stored stand-pats, keyed
+  by the cheapest sound key (the board as nested tuples, 1.2 µs per node against
+  `evaluate`'s 40 µs; a production key only adds cost) — recovers the full revisit bound at
+  depth 3 (48/48 and 208/208 hits) and about two-thirds of it at depth 4, and the wall clock
+  still does not move: -7% to +2% across the six configurations. One key, one probe and one
+  store per node eat exactly what the skipped nodes save, before any collision policy is
+  added.
 - **The correctness burden is the real price.** A sound table needs bound types (exact /
   lower / upper — mixing them silently weakens cutoffs), depth- and ply-adjusted terminal
   scores (a stored `MAXINT` must not be replayed as a same-distance win at a different depth,
@@ -1250,23 +1277,205 @@ depth it is the highest-burden, near-zero-gain item on the list. The case, quant
    symmetric prefix the book already answers. Highest burden, near-zero gain at the
    deployment depth: declined, with the numbers on record.
 
-## 11. The version timeline — a final comparison
+## 11. The v5 deployment — the forced-win layer and the position battery
 
-The project's chapters are four engine versions, each one step of the timeline:
+The v4 of chapter 10 stopped at quiescence, forward pruning and the opening book. The
+v5 deployment adds one feature — the forced-win layer — and carries a specification
+with three requirements, stated for play against the reference Cloudict engine:
+
+- **Forced wins in 1, 2 and 3 turns** — in the proposed position, the engine must find
+  the winning continuation.
+- **Defence against threats in 1, 2 and 3 turns** — in the proposed position, the
+  engine must defend.
+- **Starting positions** — the engine must play consistent lines of play and not be
+  defeated in a few moves.
+
+This chapter ships both halves: the layer that makes the skills real (11.1) and the
+position battery that proves them (11.2-11.5). The battery runner in `tuning/harness.py`
+verifies the three requirements from a curated position set (`benchmarks/battery.json`),
+the engine playing itself — the strongest opponent this repository contains — in the
+deployment configuration: opening book, depth 3, quiescence, forced-win layer. Every
+result is a deterministic regression lock: each position is played twice and the
+transcripts must be identical, so any behavioural change anywhere in the pipeline shows
+up as a FAIL or a transcript diff.
+
+### 11.1 The forced-win layer
+
+`connect6/vcf.py` exports `search_v5`, the root search `game_engine.py` plays — the v4
+configuration plus this layer. Three stages at the root, in order:
+1. **Proven forced-win offense.** A narrow recursion over forcing moves only. A threat
+   window is a 6-window free of defender stones; a five-window (5 attacker stones,
+   1 empty) forces the defender to fill that exact cell, a four-window (4 stones,
+   2 empties) forces one stone into either empty. The defender places *two* stones per
+   turn, so three or more uncovered windows lose at once, exactly two make the reply
+   fully determined — the chain's only sound continuation — and one or fewer leave the
+   defender a free stone that can refute anything; such branches are discarded, so a
+   reported win is a proven win, returned at the terminal score. `VCF_PLY_CAP = 20`
+   bounds the chain and `VCF_NODE_CAP = 1500` makes a pathological probe return
+   inconclusive instead of hanging the move.
+2. **Budgeted deepening.** The enhanced search of 10.1-10.3 runs at the depth floor
+   and then deepens (`V5_DEEPEN_STEPS = 2`) while the cumulative node count stays under
+   `V5_NODE_BUDGET = 12000` — a budget in nodes, not seconds, so reruns stay exact.
+3. **The defence screen.** The chosen move is discarded if it hands the opponent a
+   proven forced win, and also if it leaves an armed split pair — two opponent stones
+   with a two-cell gap whose one-move join would force our entire reply — falling back
+   to the first screened root candidate (or a constructed gap-breaking pair) that does
+   not.
+
+The battery below is this layer's end-to-end evidence: the one-turn wins cost
+exactly one node (stage 1 answers before any tree search), and the defence entries —
+up to 254,424 nodes — pay for the deepened search plus the screen at every turn of the
+horizon. The layer also has its own unit coverage in the test suite (13.6).
+
+### 11.2 Method
+
+The runner lives in the shared scaffolding — `tuning/harness.py`, the same module the
+sections 9, 10, 11 and 12 experiments stand on (13.2) — and is thin over the package's
+public API: `replay_history` rebuilds the board from move messages, `deployment_player`
+is the deployed engine as a harness player (the opening book first, then `search_v5` at
+depth 3 with the forced-win layer), and `play_from` referees a self-play from an
+arbitrary history until the game ends or the horizon cuts it. `battery_result` plays
+one entry twice and applies the verdict rules, `run_battery` maps it over the battery,
+and `python tuning/harness.py battery` is the one-command CLI. Verdict rules:
+
+- a `win` entry (our side to move) must end with our win within 2N-1 plies;
+- a `defend` entry (our side to move first) must not lose within 2N plies — winning or
+  surviving the horizon both count;
+- a `start` entry must not lose before `min_plies`, and its two transcripts must be
+  identical.
+
+Three sources of positions, each chosen so the entry measures the engine rather than
+the author:
+
+- *Hand-constructed live-five pairs* — a five-stone run with both ends open, one
+  horizontal and one diagonal. The win twin (attacker to move) is the one-turn skill at
+  its purest; the defence twin is the same stones with the defender to move, who must
+  spend its whole pair on the two open ends — the textbook Connect6 block.
+- *Harvested wins* — deterministic self-play games from four seeds (the book opening and
+  three deviations); for the winner at ply P, the position P-2N+1 is a win-in-N entry
+  only if the engine converts within 2N-1 plies *and fails to convert within 2N-3* —
+  the horizon is exact, not padded.
+- *Harvested defences* — positions where the eventual winner, **given the move first**,
+  converts within N turns (a real threat, measured by playing the attacker first), but
+  the defender's own recorded move survived more than N attacker turns: the engine
+  found that defence on the record, and the battery locks it.
+
+The entries are independent self-plays over a read-only engine, so the battery
+parallelises cleanly: the runner defaults to twelve worker processes (`--jobs N`
+or `--jobs 1` for sequential). Threads would serialise on the GIL — these are
+processes. The parallel results are bit-identical to the sequential ones because the
+workers only divide the wall clock; the notebook's asserted node budgets were measured
+sequentially, so their match under parallelism is itself the check.
+
+### 11.3 Measurements
+
+The notebook `benchmarks/perf_position_battery.ipynb` is the executable record: it
+runs the battery on every core and asserts every verdict, transcript identity, ply
+count and node budget against the table below. The measured run: **19/19 pass, 310 s
+wall on 12 cores** against about twenty minutes of sequential entry work (each entry
+is played twice) — the speedup is capped not by the cores but by the makespan: the
+longest single entry, `defend-2-double-threat`, costs about 4.4 minutes of worker
+time on its own.
+
+| id | class | outcome | plies | nodes |
+| --- | --- | --- | --- | --- |
+| win-1-horizontal-live-five | win 1 | black wins | 1 | 1 |
+| win-1-diagonal-live-five | win 1 | black wins | 1 | 1 |
+| win-1-seedJJ | win 1 | white wins | 1 | 1 |
+| win-1-seedMNMN | win 1 | white wins | 1 | 1 |
+| win-2-seedJJ | win 2 | white wins | 3 | 1,732 |
+| win-2-seedKJIJ | win 2 | white wins | 3 | 16,124 |
+| win-3-seedJJ | win 3 | white wins | 5 | 1,917 |
+| win-3-seedHIKK | win 3 | white wins | 5 | 47,811 |
+| defend-1-horizontal-live-five | defend 1 | held | 2 | 11,061 |
+| defend-1-diagonal-live-five | defend 1 | held | 2 | 31,170 |
+| defend-1-late-pressure | defend 1 | held | 2 | 3,155 |
+| defend-1-live-four | defend 1 | held | 2 | 95,758 |
+| defend-2-early-fork | defend 2 | held | 4 | 49,355 |
+| defend-2-double-threat | defend 2 | held | 4 | 254,424 |
+| defend-3-opening-fork | defend 3 | held | 6 | 150,157 |
+| defend-3-fork-build | defend 3 | held | 6 | 222,772 |
+| start-empty-black-survives-opening | start | reached ply 20 | 20 | 92,336 |
+| start-empty-white-converts-opening | start | white wins | 20 | 92,336 |
+| start-kjij-white-converts | start | white wins | 12 | 215,634 |
+
+**The layer against v4 on the common trajectory.** The recorded game of section 10.2 — the
+v4-vs-v4 self-play, pinned move-for-move — re-analyzed at every decision point by the v4
+engine and the deployed v5, one worker process per position through `harness.analyze_history`
+(`benchmarks/perf_search_v5_layer.ipynb`; the same protocol prices v3 against v4). The layer
+pays 4.4x v4's mean nodes (29,486 vs 6,667; totals 1,415,330 vs 320,038): quiet development
+pays the deepening budget, and the defence screen's probe cost spikes twentyfold on the
+sharpest position (233,374 nodes at prefix 34 against v4's 11,612). It changes 35 of 48
+moves and flips six verdict bands — all six wins the layer proves and v4 never prices: five
+stage-1 answers at exactly one node (prefixes 42, 44, 45, 46, 47 — the completing pairs
+`IMJM` and `FKFJ` by mover, ±20,000) and one budgeted-deepening find at 70 nodes (prefix 36).
+The v4 self-play sailed through all six on its way to a 48-ply standstill; the layer sees
+the forced wins the enhanced search leaves in the mid-band.
+
+### 11.4 Observations
+
+- **The one-turn wins cost exactly one node.** The forced-win layer (section 11.1)
+  returns the completing pair before any tree search runs — the battery confirms it
+  fires on both colours and both axes.
+- **The defence entries dominate the cost.** Proving survival needs the full deepened
+  depth-3 search plus the forced-win screen at every turn of the horizon: up to
+  254,424 nodes and about two minutes of search for one defended line. The win
+  entries never exceeded 47,811 nodes. Defence is where the engine spends its
+  nodes — exactly where a Connect6 engine should.
+- **The live-five defence is the section-8 algebra made moves.** Both defence twins
+  answer the five with the pair on the two open ends, one stone per end — the
+  two-defender-stones rule from the threat analysis, played rather than asserted.
+- **The opening lines are decisive and repeatable.** In deployment-configuration
+  self-play the recorded lines end by ply 14-40 with white converting; the start
+  entries lock black's survival to the measured line (ply 19 of the book line) and
+  white's conversion, and the double-run transcript check holds everywhere.
+  Consistency is not claimed — it is asserted twice per run.
+- **The layer's price is lumpy, its verdicts are not.** On the common trajectory the layer
+  costs 4.4x v4's mean nodes but zero where it matters: every proven-win position is answered
+  by stage 1 in a single node — a forced win is cheaper than a quiet move — while the
+  screen's probe spikes (233,374 nodes at one sharp position) are the price of never handing
+  over an armed split pair.
+
+### 11.5 Results and conclusions
+
+1. **All three hired skills pass on the record**: eight wins convert inside their
+   exact horizons, eight defences hold, three opening lines survive or convert with
+   byte-identical transcripts across repeat runs. 19/19, one command.
+2. **The battery is a regression lock on the whole pipeline.** Node budgets are exact
+   integers, not approximations — any change to the evaluation, candidates, search,
+   book or forced-win layer that alters any position's play shows up as a FAIL, a
+   transcript diff, or a node-count diff. The notebook asserts all of them.
+3. **What the battery does not claim**: strength against opponents outside this
+   repository. Self-play is the strongest available in-repo opponent and the right
+   referee for the three skills; external yardsticks are a different experiment.
+4. **Parallelism is safe here because the entries share nothing.** The same pattern
+   — independent work items over a read-only engine, one worker process each — now carries
+   the fixture games (`run_games`), the trajectory analyses (`analyze_history`) and the
+   battery, twelve jobs by default; it bought a 4x wall reduction on the battery, cut the
+   timeline's eight games to about a minute, and the results stay bit-identical everywhere.
+
+## 12. The version timeline — a final comparison
+
+The project's chapters are five engine versions, each one step of the timeline:
 
 - **v1 — naive min-max**, hand-tuned weights (sections 2-5, the documented baseline);
-- **v2 — alpha-beta** (section 6), same weights: pure algorithmic speed, provably identical play;
+- **v2 — alpha-beta** (section 5), same weights: pure algorithmic speed, provably identical play;
 - **v3 — alpha-beta + tuned weights** (section 9): the GA champion in place of the hand-tuned set;
-- **v4 — the deployed engine**: tuned weights *plus* quiescence, forward pruning and the opening book (section 10).
+- **v4 — quiescence, forward pruning and the opening book** (section 10): the tuned weights
+  *plus* the search enhancements;
+- **v5 — the forced-win layer** (section 11), the current deployment: proven offense, budgeted
+  deepening and the defence screen — the position battery (11.3) is its end-to-end evidence.
 
 `benchmarks/perf_versions_v1_v4.ipynb` measures all four at the deployment depth (3): who wins —
 every adjacent pairing of the timeline plus the full journey v1-vs-v4, one deterministic game
 per color assignment through the section-9 protocol (center opening, 60-ply cap, weights
 installed per search by the GA referee's own `apply_weights`) — and what it costs — the
 section-10 positions plus the opening reply, where the book answers instead of a search.
-Reruns reproduce every number exactly.
+Reruns reproduce every number exactly. The fifth version — v5, the deployed forced-win layer —
+stands outside this ladder: no earlier version plays against it in that notebook, and its
+end-to-end evidence is the position battery of section 11 (11.3).
 
-### 11.1 Who is winning
+### 12.1 Who is winning
 
 | black | white | outcome | winner | ply |
 |---|---|---|---|---|
@@ -1290,7 +1499,7 @@ opponent's weights stop changing its choices — section 9.3's weight-invariance
 again from the other side. The lone regularity that survives every unequal pairing: no
 version ever lost to an earlier one.
 
-### 11.2 What it costs
+### 12.2 What it costs
 
 One search per position per version, one row per measurement, deterministic: nodes, wall
 time, and the fixed black-perspective root score. `book` marks the rows the opening book
@@ -1348,7 +1557,7 @@ At depth 4 (min-max omitted — its full d4 trees are minutes long):
 | | v3 tuned weights | 1,616 | 192 | 11,596 |
 | | v4 deployed | 110 | 31 | **20,000** |
 
-### 11.3 Observations
+### 12.3 Observations
 
 - **v1 and v2 agree everywhere — scores and moves — on every position at both depths.**
   The equivalence the test suite pins per-position shows up as the two versions' rows
@@ -1379,7 +1588,7 @@ At depth 4 (min-max omitted — its full d4 trees are minutes long):
   quiet positions and up to ~2.3 s through tactical middlegames — inside GUI-interactive
   budgets, and section 10's economics hold in full games, not just fixed positions.
 
-### 11.4 Conclusions
+### 12.4 Conclusions
 
 1. Each step of the timeline bought exactly what its chapter claimed, and the final
    benchmark shows the steps composing: **alpha-beta is speed (identical play, 10-358x
@@ -1391,306 +1600,21 @@ At depth 4 (min-max omitted — its full d4 trees are minutes long):
 3. The regularities across chapters are consistent: deterministic protocols give complete
    records, not samples; strength conclusions remain protocol-relative (center opening,
    depth 3, 60-ply cap); and every equal-strength pairing still leans black.
+4. A scope note on "the deployed engine": the v4 of this timeline is the section-10
+   enhancements — quiescence, forward pruning, the book. The engine that ships today
+   plays `search_v5` on top of that configuration (the forced-win layer, section 11.1),
+   a fifth configuration these tables do not cover; its end-to-end behaviour is measured
+   by the section-11 battery instead. The versions stay cleanly separated: each timeline
+   row pins its search callable, weights and book, and the later layer cannot reach them.
 
-## 12. The external yardstick — the deployed engine vs cloudict
-
-The chapters above measure the engine against itself — its baselines, its weight sets, its
-own search generations. This chapter measures it against somebody else's engine, as
-shipped by its authors: **cloudict**, the C++ Connect6 engine by Hao Cui, Liang Li, Ruijian
-Wang and Siran Lin (2008-2013), gold medal at the 16th Computer Olympiad (2011) and at the
-14th (2009, as Bit) — the engine whose protocol and command set this coursework descends
-from. `benchmarks/perf_external_cloudict.ipynb` plays the deployed engine (champion
-weights, opening book, quiescence and forward pruning, depth 3 — the configuration of
-`dist/main`) against it, both engines as subprocesses: cloudict at its default depth 6
-with its VCF threat search armed, ours at the deployment depth 3.
-
-A provenance note. The prebuilt engine snapshots shipped in the Connect6GUI project's
-`engines/` folder are x86_64 binaries — Linux, Windows, and one 2016-era macOS Mach-O
-that current macOS kills at exec even after an ad-hoc re-signature. So `benchmarks/cloudict/`
-vendors the upstream BSD-licensed source (github.com/lang010/cloudict); the notebook
-compiles it natively if the binary is missing, and runs it in a scratch directory with
-`patterns.in` beside it, as its VCF search expects.
-
-cloudict seeds nothing, our search is exact — both engines are deterministic, so one game
-per color assignment is the complete fixture, and the notebook asserts every move, node
-count, book hit and VCF finish against this chapter. Only wall times vary between runs.
-
-### 12.1 Method
-
-The referee speaks the shared protocol to both processes: `new black` makes an engine
-auto-play the center opening `JJ`, every later reply arrives as `move XXXX` and is relayed
-to the opponent, and `depth d` sets each engine's lookahead (3 for ours, 6 for cloudict —
-each as deployed). The board is mirrored independently with the engine package's own rules
-(`connect6.board`), so the winner never depends on either engine's self-reporting; a
-60-ply cap bounds the fixture. Stats lines are parsed per engine — ours prints
-`Search Time/Node/Score` or `Book:`, cloudict prints `VCF time/VCF node/AB Time/Node/Score`
-and `Win by VCF.` when its threat search has taken over — and a reader thread per engine
-feeds a queue, so a stuck process fails loudly at the 900-second-per-move deadline instead
-of hanging the referee.
-
-### 12.2 The games
-
-| game | black | white | outcome | winner | ply | duration |
-|---|---|---|---|---|---|---|
-| 1 | cloudict | ours | black wins | **cloudict** | 15 | 86.8 s |
-| 2 | ours | cloudict | white wins | **cloudict** | 14 | 98.9 s |
-
-cloudict wins both color assignments. Game 1, ply by ply (`VCF` marks the moves cloudict's
-forced-win search took over):
-
-| ply | color | engine | move | cost |
-|---|---|---|---|---|
-| 1 | black | cloudict | JJ | the center opening |
-| 2 | white | ours | IIKK | **book** |
-| 3 | black | cloudict | LJJH | 46.4 s · 604,211 nodes |
-| 4 | white | ours | KIKJ | 0.61 s · 2,027 nodes |
-| 5 | black | cloudict | KHJI | 6.3 s · 81,197 nodes |
-| 6 | white | ours | JKLK | 0.98 s · 3,214 nodes |
-| 7 | black | cloudict | HKIJ | 11.3 s · 109,776 nodes |
-| 8 | white | ours | LGGL | 0.61 s · 1,637 nodes |
-| 9 | black | cloudict | IHJG | 12.9 s · 153,739 nodes |
-| 10 | white | ours | JFLH | 2.74 s · 6,760 nodes |
-| 11 | black | cloudict | KFHI | **VCF**, 0.010 s |
-| 12 | white | ours | GJLE | 1.81 s · 4,387 nodes |
-| 13 | black | cloudict | HHHJ | **VCF**, 0.000 s |
-| 14 | white | ours | HGHF | 0.04 s · 112 nodes |
-| 15 | black | cloudict | FHGH | **VCF**, 0.004 s — six in a row |
-
-Game 2, colors swapped — ours opens, cloudict answers, and its threat search closes this
-one a ply earlier:
-
-| ply | color | engine | move | cost |
-|---|---|---|---|---|
-| 1 | black | ours | JJ | the center opening |
-| 2 | white | cloudict | IJJI | 36.0 s · 483,169 nodes |
-| 3 | black | ours | HKII | 0.25 s · 1,415 nodes |
-| 4 | white | cloudict | KKKJ | 25.8 s · 287,863 nodes |
-| 5 | black | ours | KIIK | 0.45 s · 1,557 nodes |
-| 6 | white | cloudict | LKHL | 14.4 s · 181,632 nodes |
-| 7 | black | ours | IHGK | 0.79 s · 2,535 nodes |
-| 8 | white | cloudict | MLKL | 10.3 s · 112,558 nodes |
-| 9 | black | ours | NMHH | 6.50 s · 19,197 nodes |
-| 10 | white | cloudict | NLLL | **VCF**, 0.096 s |
-| 11 | black | ours | JLOL | 1.83 s · 4,584 nodes |
-| 12 | white | cloudict | INJM | **VCF**, 0.000 s |
-| 13 | black | ours | MJNI | 1.78 s · 4,219 nodes |
-| 14 | white | cloudict | GPHO | **VCF**, 0.004 s — six in a row |
-
-### 12.3 What it costs
-
-| game | engine | moves | wall s | max nodes | searched moves | VCF moves | book hits |
-|---|---|---|---|---|---|---|---|
-| 1 | ours | 7 | 6.8 | 6,760 | 6 | 0 | 1 |
-| 1 | cloudict | 8 | 79.9 | 604,211 | 4 | 3 | 0 |
-| 2 | ours | 7 | 11.6 | 19,197 | 6 | 0 | 0 |
-| 2 | cloudict | 7 | 87.2 | 483,169 | 4 | 3 | 0 |
-
-The two engines buy their moves with different currencies. cloudict spends 6-46 s and
-81,000-604,000 nodes on its four searched moves per game (depth 6), then finishes free on
-VCF; ours spends 0.04-6.5 s and at most 19,197 nodes per move (depth 3 + quiescence), and
-answers one move from the book. Per-game node totals: 18,137 vs 948,923 (game 1), 33,507
-vs 1,065,222 (game 2) — cloudict pays 32-52x our node price per game, and buys the win
-with it.
-
-### 12.4 Observations
-
-- **The verdict is honest and one-sided: cloudict 2-0, both games closed by VCF.** Against
-  a Computer-Olympiad gold medalist the deployed coursework engine loses in 14-15 plies —
-  exactly what an external yardstick is for: a bound on where the project actually stands.
-- **The VCF module is the visible gap.** From ply 11 (game 1) and ply 10 (game 2),
-  cloudict's dedicated victory-by-continuous-forcing search announces `Win by VCF.` and
-  finishes in milliseconds. Section 7 documented this engine's lack of a dedicated
-  forced-win search as a design limitation; quiescence prices threats inside the horizon,
-  but at depth 3 it cannot chase a forcing line that runs four plies past it — the
-  fork exhibits of section 10 (found one ply early) are the same story at a scale the
-  deployment depth does not cover.
-- **Depth is the other half of the gap.** cloudict's searched moves cost 81,000-604,000
-  nodes at depth 6 — three plies deeper than the deployment depth 3, at 32-52x the
-  per-game node price. Its 46-second second move (604k nodes) and its 36-second opening
-  answer in game 2 are tactical homework our depth-3 trees do not see.
-- **The book bought exactly one move.** Game 1's `IIKK` came from the book; cloudict's
-  reply left the five recorded self-play lines, and in game 2 its opening answer `IJJI`
-  was never one of them. A self-play book is an opening dictionary, not an opponent
-  model — the section-10 caveat, demonstrated by a foreign engine.
-- **The engine's cost discipline held under an external lens.** 0.04-6.5 s and at most
-  19,197 nodes per move, the same order as the internal benchmarks' quiet-move costs
-  (section 11.3) — against an opponent paying 6-46 s per searched move.
-
-### 12.5 Conclusions
-
-1. The deployed engine's external position is 0-2 against cloudict, with the losses
-   traceable to two identified gaps — no dedicated forced-win search and a 3-vs-6 depth
-   deployment — rather than to the fundamentals: the protocol layer, the evaluation and
-   the candidate machinery hold up, and every game stays legal, coherent and cheap.
-2. Closing either gap is measurable with the same instruments. The candidate machinery
-   already surfaces the forcing lines a VCF search would walk (section 6's threat
-   ranking), and the depth knob is a single constant — the harness, the notebooks and
-   the cross-process referee of this chapter price either change end to end.
-3. The measurement itself is a deliverable: the referee speaks the shared wire protocol
-   to any external engine, across process boundaries, with determinism intact — two
-   independent runs of the fixture produced identical moves and node counts, so the
-   complete-record property of sections 9-11 holds against a foreign engine too.
-
-## 13. Closing the gap — what was tried against cloudict
-
-Section 12 ended with the external position stated plainly — 0-2 against cloudict, with two
-gaps named rather than excused: the engine had no dedicated forced-win search, and it was
-deployed three plies shallower than the opponent. This chapter is the record of the campaign
-that followed. Five attempts were built and measured; none changed the score, and the
-failures converged on a diagnosis this chapter states at the end. Both engines stayed
-deterministic throughout, so every rematch remained the complete fixture of section 12 — one
-game per color assignment, nothing sampled — and the campaign's move lists, timings and node
-counts are preserved with the campaign record. The chapter keeps to the narrative: what was
-tried, what it measured, what it means.
-
-### 13.1 The sound forced-win generation
-
-The first attempt built what section 7 had documented as missing: a dedicated
-victory-by-continuous-forcing search founded on the threat algebra of section 6 — a threat is
-a six-window free of defender stones, the defender places two stones per turn, so a position
-demanding three covers is a win no defense can meet. Forced wins that the tuned search reaches
-only after thousands of nodes fall out of this search in tens of them (the fork exhibit of
-section 10 resolves in seventeen; a completable five in one). It was wrapped in a root that
-deepens iteratively from the protocol depth while a fixed node budget lasts, and finished with
-a ranked defense screen: when the deepened best move leaves the opponent an armed split or a
-forced win, the root switches to the best candidate that does not, ranked by provable safety
-first and by how many enemy split pairs it disarms second.
-
-The generation won its internal ladder match 2-0 against the section-11 champion and became
-the engine's fifth generation, superseding the deployment configuration of section 12.
-Against cloudict it still lost 0-2 — but the character of the losses changed, and that change
-is the campaign's first result. The replay audit of section 12 had shown both original losses
-structurally decided before the final move; in the new games the loss was *certified* before
-the final move: the forced-win search proves the losing side had no survivable move left. The
-engine stopped donating games; it was being out-played. The screen also measurably disrupted
-the opponent once — at the point where cloudict's earlier wins had begun replaying a stored
-victory line in milliseconds, it was forced into a genuine 382,000-node, 33-second search
-before its winning announcement. Disruption, not denial: it rebuilt the attack and won, but
-the mechanism was real.
-
-Two audit findings framed everything that followed. First, the initiative audit: from ply 9
-of game 1 and ply 6 of game 2, every single engine move was the exact forced cover — a cover
-cost of exactly two, the whole move dictated. cloudict's mechanism is to build split pairs —
-two stones with a two-cell gap — and join them with one move into three or four simultaneous
-four-windows. That consumes the engine's entire move every turn while cloudict develops with
-its entire move; the initiative accumulates until a cover cost of three appears and the game
-ends. Second, the survivability analysis of the one free move that mattered — game 1, ply 7,
-the engine's last undictated choice: the position demanded three things (block a four-window
-about to complete, kill two armed split pairs) and a move places two stones. No legal move
-achieves all three; the engine's best still left one split armed, and so did every alternative
-of equal quality. The screen can choose among survivable moves; it cannot create freedom that
-does not exist.
-
-### 13.2 Deeper search
-
-The second lever from section 12.5 was depth. The node budget was raised so the deepening
-reached depth 5 on every board, not only the sparse ones. The score stayed 0-2 — and game 1
-collapsed in 18 plies, against 22 at the standard budget. The bind the opponent builds is
-positional, not a horizon artifact: searching the forced replies more deeply converges on the
-same forced covers. Depth amplifies what the evaluation already believes, and the evaluation
-was the thing being exploited. This result also set the shape of the budget the fifth
-generation ships: depth is bought only where the position is sparse enough to afford it, not
-as an unconditional bid.
-
-### 13.3 Reading the opponent
-
-With both levers of section 12.5 pulled and the score unchanged, the campaign turned to
-cloudict's source. Four findings, each verified in the code and where possible on the board:
-
-1. **Its search is ordinary.** Fixed depth 6, alpha-beta with move ordering. No
-   principal-variation search — the variable for it is computed and never used, dead code. No
-   transposition table, no quiescence, no iterative deepening, no time management. The gap of
-   section 12 is not in its search.
-2. **The strength is in move scoring and leaf evaluation.** The move generator prices enemy
-   structures at every node — including an explicit, hand-coded pattern for exactly the split
-   pairs that beat us, at a fixed modest score between its pair and live-three tiers, plus an
-   emergency blocker-first candidate width whenever an enemy four-threat appears. The leaf
-   evaluator classifies segment types and keeps crossing tables — pairs of intersecting live
-   structures, the precursors of forks — and flips its weight table depending on who holds
-   the initiative.
-3. **Its forced-win search is powerful and provably unsound.** A threat count above two is
-   scored as an immediate win regardless of whether one pair of covering stones can serve
-   several windows at once; the defender is modelled as blocking only; an empty defender list
-   falls through to a win. Winning announcements are then backed by a stored line replayed at
-   zero cost until the opponent deviates. (Its defensive counterpart to this search sits in
-   the source uninvoked — dead code in the deployed engine.)
-4. **The unsoundness was measured, not presumed.** At the rematch's first winning
-   announcement, the position held no forcing threats for cloudict at all: a sound probe of it
-   terminates exhaustively in one node, and a probe extended to join-started attacks takes
-   five and still finds no forced win. The announcement was not backed by a real forced win —
-   and cloudict won anyway. Unsoundness that buys tempo is still tempo.
-
-### 13.4 The transplants — three variants, three lessons
-
-The source study said the battle is in the candidate and evaluation layers, and the natural
-next move was to transplant cloudict's candidate-layer mechanisms into the engine's tree.
-Three variants were built and measured, each an isolated change:
-
-- **Root-level defense pool** — when the deepened best leaves an armed split or a forced loss,
-  re-rank from a pool that leads with emergency covers of enemy five/four windows, then enemy
-  split-gap cells paired with each other and crossed with the strongest ordinary cells
-  (cloudict's emergency width and split pricing, applied at the root). Verdict: inert.
-  Instrumentation of the rematch showed the deepened best was already provably safe at every
-  free ply, and the screen fired exactly once in thirty plies of play. The root's move list
-  was never the problem — the losses come from inside the tree. Notably, in this and every
-  attempt that left the tree's own scoring untouched, game 2 replayed identically: every move
-  a forced cover, nothing for any root-level mechanism to choose.
-- **Join pricing inside the tree, both colors** — the exact split-join geometry, at the exact
-  fixed score cloudict's own scorer assigns to it, added to every node's candidate scoring.
-  Verdict: it beat our own champion 2-0 — and lost to cloudict in fourteen and seventeen
-  plies, the black-side game collapsing eight plies sooner than the fifth generation's. The
-  engine began building split pairs of its own; a depth-6 engine with a situation evaluator
-  refutes our splits faster than it punishes our quiet development.
-- **Join pricing for the opponent only** — the defensive half alone, at every node. Verdict:
-  disqualified before the cloudict rematch: 0-2 against our own fourth-generation champion,
-  one game in nine plies. Priced only for the non-mover, the search's opponent model turns
-  paranoid — it assumes the enemy will spend its moves blocking our joins — and the search
-  then optimizes lines the real opponent never plays.
-
-The transferable lesson: the mechanisms do not survive separation from the evaluator that
-directs them. In cloudict they sit on top of a situation evaluator that prices crossing
-structures and flips its weights with the initiative; grafted onto this engine's linear
-evaluator they either over-commit our own development or corrupt the opponent model. The
-sixth-generation experiment was shelved accordingly — every variant reproducible, none
-shipped — and the fifth generation remains what the engine runs.
-
-### 13.5 Why the gap holds
-
-1. **The direct cause is a tempo bind.** Split pairs joined into three or four simultaneous
-   four-windows demand a cover cost of exactly two — our whole move — every turn, from the
-   opening on. The initiative audit shows it: from ply 9 in game 1, ply 6 in game 2, the
-   engine never made an unforced move again. At the one free move that mattered, the position
-   demanded more blocks than a move has stones.
-2. **The patterns are not the missing organ — the evaluator is.** Every faithful transplant of
-   cloudict's scoring patterns, at root level and inside the tree, symmetrically or for the
-   opponent only, left the score unchanged or made it worse. What the patterns need in order
-   to help is the layer beneath them: crossing-structure pricing and initiative-aware weights
-   that tell the engine *when* a split is worth building and *when* the tempo is there to
-   exploit one.
-3. **The compute ratio caps any fix.** cloudict searches at roughly 2.3 times our node speed;
-   its opening moves alone cost more nodes than our engine spends in an entire game. Equal
-   wall-clock is full-width depth 6 for it against budgeted depth 3-5 for us, whatever the
-   evaluation believes.
-4. **What the campaign established in the engine's favor.** The losses are honest: certified
-   lost before the final move, never a donated game. The engine's own winning announcements
-   are sound by construction — the same probe discipline that disproved cloudict's
-   announcements in one node certifies ours. The defense screen forced the opponent off its
-   zero-cost win-line script once, into a genuine 33-second search. And every shipped
-   generation preserved the internal ladder: 2-0 against the section-11 champion throughout.
-5. **What closing the gap would take.** The full transplant — a crossing-structure,
-   initiative-aware evaluation, re-tuned with the section-9 instruments — and behind it the
-   language-speed ratio that bounds how deeply any corrected judgment can search. The
-   sound forced-win layer, the cross-process referee and the candidate machinery are all in
-   place for that next iteration; that readiness is the deliverable this campaign adds.
-
-## 14. Deliverables — the reusable inventory
+## 13. Deliverables — the reusable inventory
 
 The evaluation built more than an engine: it built the instruments that measured it. This
 closing chapter inventories the functionality, developed for the chapters above, that
 another project — or the next iteration of this one — can pick up and reuse. Every item
 points at the artefact that carries it; none of it needs to be taken on trust, only rerun.
 
-### 14.1 The engine as a library
+### 13.1 The engine as a library
 
 `connect6/` is importable as a package whose only import-time side effect is reading the
 weight file named by `WEIGHTS_FILE` (the champion, with the hand-tuned fallback). What the
@@ -1707,20 +1631,22 @@ package exports:
 - **One search loop, three searches** — min-max, alpha-beta and the enhanced variant share
   the single `_alpha_beta` loop behind two flags (`prune`, `enhanced`): a new variant is a
   flag away, not a fork.
-- **The opening book**, with parity position keys and silent fallback (14.4).
+- **The forced-win layer** — `vcf.search_v5`, the deployed root: proven forced-win
+  offense, budgeted deepening, and the defence screen (11.1).
+- **The opening book**, with parity position keys and silent fallback (13.4).
 
 The reuse pattern is the one this repository uses everywhere — the test suite, the tuning
 scripts, the notebooks: pin `WEIGHTS_FILE`/`BOOK_FILE`, import, call.
 
-### 14.2 The tuning harness
+### 13.2 The tuning harness
 
-`tuning/harness.py` is the scaffolding the experiments of sections 9-11 stand on, factored
+`tuning/harness.py` is the scaffolding the experiments of sections 9, 10, 11 and 12 stand on, factored
 out so the next experiment starts at the measurement instead of the plumbing:
 
 - `pin_weights` — sets `WEIGHTS_FILE` before the engine is imported; the weights-are-read-once
   hazard is solved exactly once, at the right place.
 - `empty_board`, `at`, `center` — board construction and the fixed center opening.
-- `documented_positions` — the six boards behind the section-10/11 tables, built identically
+- `documented_positions` — the six boards behind the section-10/12 tables, built identically
   on every call.
 - `search_player` and `weights_player` — adapters that turn any search callable or weight
   vector into the common player interface.
@@ -1728,6 +1654,16 @@ out so the next experiment starts at the measurement instead of the plumbing:
   `SearchStats` per move, per-side `Tally` (nodes, ms, moves, book hits — a call that leaves
   the stats untouched counts as a book hit), and a `GameRecord` with the winner, plies,
   final board and move log.
+- `run_games` and `analyze_history` — the parallel pair: independent games and independent
+  position analyses mapped across worker processes, twelve jobs by default, players expressed
+  as picklable `PlayerSpec` data (the search callable, optional per-call weights, book first
+  or not). The work items share nothing, so the parallel results are bit-identical to the
+  sequential ones.
+- the **position battery** (section 11) — `replay_history` (a board from arbitrary move
+  messages), `deployment_player` (the deployed engine as a player: book first, then
+  `search_v5` with the forced-win layer), `play_from` (a self-play refereed from any
+  history), `battery_result`/`run_battery` (verdicts, transcript identity, twelve worker
+  jobs by default), and the `python tuning/harness.py battery` CLI.
 
 A new search idea is measured in a few lines:
 
@@ -1740,10 +1676,10 @@ record = harness.play_game(player, player, depth=3, white_first_reply="IIKK")
 print(record.winner, record.plies, record.black.nodes, record.white.nodes)
 ```
 
-The GA referee, the book generator and both measurement notebooks are thin layers over
-this one module.
+The GA referee, the book generator, the battery and all measurement notebooks are thin
+layers over this one module.
 
-### 14.3 The genetic weight tuner
+### 13.3 The genetic weight tuner
 
 `tuning/genetic_tuner.py` is a small, seeded GA for any linear-weight evaluator:
 
@@ -1758,7 +1694,7 @@ Its public surface (`Weights`, `BASE`, `apply_weights`, `fmt`, `play_game`) is w
 `run_experiment.py` and the harness import; tuning a different evaluator is a matter of
 swapping the gene ranges and the repair bounds.
 
-### 14.4 The opening-book machinery
+### 13.4 The opening-book machinery
 
 `connect6/opening_book.py` plus `tuning/generate_opening_book.py`:
 
@@ -1771,9 +1707,9 @@ swapping the gene ranges and the repair bounds.
 - the generator produces books by self-play, configurable end to end (`--depth`,
   `--plies`, `--openings`, `--weights`, `--out`) — one command, about a minute.
 
-### 14.5 The benchmark notebooks
+### 13.5 The benchmark notebooks
 
-`benchmarks/` carries three patterns beyond its results:
+`benchmarks/` carries two patterns beyond its results:
 
 - **model-fitted scaling plots** — the depth notebooks estimate the per-node cost from the
   depth-1 measurement, then draw the theoretical `O(B^depth)` curve (and the ideal
@@ -1783,18 +1719,13 @@ swapping the gene ranges and the repair bounds.
   (nodes, scores, moves, game outcomes, book hits) against this document. Executing the
   notebook *is* the validation; the stored outputs are executable documentation of the
   results.
-- **cross-engine refereeing over the wire** — the section-12 notebook drives any engine
-  that speaks the shared command set as a subprocess: a reader-thread referee relays
-  moves, mirrors the board with the package's own rules, parses the opponent's stats
-  dialect, and turns a hung process into a loud timeout. An external opponent is just
-  another measurement.
 
 Headless execution needs no IDE: `nbclient` with a kernelspec over the project venv reruns
 them from the command line — that is how their stored outputs were produced.
 
-### 14.6 The deterministic test suite
+### 13.6 The deterministic test suite
 
-`tests/test.py` — 79 tests over the whole pipeline in pipeline order — contributes two
+`tests/test.py` — 89 tests over the whole pipeline in pipeline order — contributes two
 patterns worth copying:
 
 - **pin the configuration before import** — `WEIGHTS_FILE`/`BOOK_FILE` are set before the
@@ -1806,7 +1737,20 @@ patterns worth copying:
   book must reject occupied or invalid entries and fall back to search. The regressions the
   chapters argued for are executable.
 
-Nothing in this inventory asks to be believed. The suite, the notebooks, the generator and
-the referee are deterministic, and each is its own proof: rerun them, and the numbers come
-back as printed. The deliverable is not this document — it is the set of programs that keep
-this document honest.
+### 13.7 The position battery
+
+`benchmarks/battery.json` + the battery runner in `tuning/harness.py` + the assert-validated notebook
+`benchmarks/perf_position_battery.ipynb` (section 11): nineteen curated positions —
+forced wins in one to three turns, defences against the same horizons, and opening
+lines with a double-run consistency check — each a deterministic regression lock on
+the deployed engine's whole behaviour. The battery is data plus a runner — part of the
+section-13.2 harness, thin over the package's public API, no experiment state, no
+process plumbing, one command (`python tuning/harness.py battery`) to
+re-verify everything this document claims about wins, defence and openings — and it
+parallelises: the entries are independent, so the runner defaults to twelve worker
+processes and the results stay bit-identical.
+
+Nothing in this inventory asks to be believed. The suite, the notebooks, the generator,
+the battery and the referee are deterministic, and each is its own proof: rerun them, and
+the numbers come back as printed. The deliverable is not this document — it is the set of
+programs that keep this document honest.

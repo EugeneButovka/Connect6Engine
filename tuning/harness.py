@@ -8,22 +8,42 @@ and book hits (a call that leaves stats untouched counts as a book hit) per
 side. white_first_reply forces white's opening answer as part of the opening
 setup, so the first searched move still sees the center as the last move —
 the protocol behind the section 10 head-to-head record. documented_positions
-builds the six board positions behind the section 10 and 11 tables.
+builds the six board positions behind the section 10 and 12 tables.
 pin_weights must run before any connect6 import.
+
+The parallel helpers map work items that share nothing — independent games,
+independent position analyses, independent battery entries — across worker
+processes; jobs defaults to twelve and the parallel results are bit-identical
+to the sequential ones (only wall times differ). run_games plays GameSpecs
+(players expressed as picklable data: the search function, optional weights
+installed per call, book first or not); analyze_history re-analyzes every
+decision point of a recorded move history with each of several searches.
+
+The position battery (section 11) also lives here: replay_history rebuilds a
+board from protocol move messages, deployment_player is the deployed engine
+as a player (opening book first, then search_v5 with the forced-win layer),
+and play_from referees a self-play from an arbitrary history. battery_result
+plays one battery entry twice (transcripts must be identical) and applies
+the verdict rules; run_battery maps it over the battery across worker
+processes, twelve jobs by default — the entries are independent self-plays,
+so the parallel results are bit-identical to the sequential ones. Command line:
+`python tuning/harness.py battery [battery.json] [--jobs N]`.
 """
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from connect6.defines import Color, Move, SearchStats
+    from genetic_tuner import Weights
 
     Player = Callable[[list[list[int]], Color, int, Move, SearchStats], Move]
 
@@ -151,6 +171,58 @@ def play_game(
     return GameRecord(winner, plies, board, moves, black_tally, white_tally)
 
 
+@dataclass(frozen=True, slots=True)
+class PlayerSpec:
+    search: Callable
+    weights: Weights | None = None
+    book: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class GameSpec:
+    black: PlayerSpec
+    white: PlayerSpec
+    depth: int = 3
+    max_plies: int = 60
+    white_first_reply: str | None = None
+
+
+def _spec_player(spec: PlayerSpec) -> Player:
+    from connect6.opening_book import book_move, load_opening_book
+    from genetic_tuner import apply_weights
+
+    book = load_opening_book() if spec.book else None
+
+    def player(board, color, depth, pre_move, stats):
+        if book is not None:
+            booked = book_move(board, book)
+            if booked is not None:
+                return booked
+        if spec.weights is not None:
+            apply_weights(spec.weights)
+        return spec.search(board, color, depth, pre_move, stats).move
+
+    return player
+
+
+def _game_worker(spec: GameSpec) -> GameRecord:
+    return play_game(
+        _spec_player(spec.black),
+        _spec_player(spec.white),
+        spec.depth,
+        spec.max_plies,
+        spec.white_first_reply,
+    )
+
+
+def run_games(specs: list[GameSpec], jobs: int = 12) -> list[GameRecord]:
+    """Play independent games, one worker process per game when jobs > 1."""
+    if jobs <= 1 or len(specs) <= 1:
+        return [_game_worker(spec) for spec in specs]
+    with concurrent.futures.ProcessPoolExecutor(max_workers=jobs) as pool:
+        return list(pool.map(_game_worker, specs))
+
+
 def documented_positions() -> list[tuple[str, list[list[int]], Color, Move]]:
     from connect6.defines import Color
 
@@ -191,3 +263,242 @@ def documented_positions() -> list[tuple[str, list[list[int]], Color, Move]]:
         winnable[x][y] = Color.BLACK
     positions.append(("five-run attack, white to move", winnable, Color.WHITE, at(11, 8)))
     return positions
+
+
+def replay_history(history: list[str]) -> tuple[list[list[int]], Move, Color]:
+    """Rebuild a board from protocol move messages; returns board, last move, mover."""
+    from connect6.board import make_move, opponent
+    from connect6.defines import Color, Move, Position
+    from connect6.protocol import msg2move
+
+    board = empty_board()
+    pre_move = Move((Position(0, 0), Position(0, 0)))
+    color = Color.BLACK
+    for msg in history:
+        move = msg2move(msg)
+        make_move(board, move, color)
+        pre_move = move
+        color = opponent(color)
+    return board, pre_move, color
+
+
+@dataclass(frozen=True, slots=True)
+class AnalysisRow:
+    prefix: int
+    name: str
+    nodes: int
+    ms: float
+    score: int
+    move: str
+
+
+def _analysis_worker(task: tuple[list[str], int, str, Callable, int]) -> AnalysisRow:
+    from connect6.defines import SearchStats
+    from connect6.protocol import move2msg
+
+    history, prefix, name, search, depth = task
+    board, pre_move, color = replay_history(history[:prefix])
+    stats = SearchStats()
+    start = time.perf_counter()
+    result = search(board, color, depth, pre_move, stats)
+    ms = (time.perf_counter() - start) * 1000
+    return AnalysisRow(prefix, name, stats.node_count, ms, result.score, move2msg(result.move))
+
+
+def analyze_history(
+    history: list[str],
+    searches: list[tuple[str, Callable]],
+    depth: int,
+    jobs: int = 12,
+) -> list[AnalysisRow]:
+    """Re-analyze the decision points of a recorded history with each search.
+
+    A decision point is every prefix of length 1..len(history)-1: each
+    position where the game's next move exists. One worker process per
+    (prefix, search) task when jobs > 1; node counts, scores and moves are
+    bit-identical to the sequential run, wall times are not.
+    """
+    tasks = [
+        (history, prefix, name, search, depth)
+        for prefix in range(1, len(history))
+        for name, search in searches
+    ]
+    if jobs <= 1 or len(tasks) <= 1:
+        return [_analysis_worker(task) for task in tasks]
+    with concurrent.futures.ProcessPoolExecutor(max_workers=jobs) as pool:
+        return list(pool.map(_analysis_worker, tasks))
+
+
+def deployment_player() -> Player:
+    """The deployed engine as a player: opening book first, then search_v5."""
+    from connect6.opening_book import book_move, load_opening_book
+    from connect6.vcf import search_v5
+
+    book = load_opening_book()
+
+    def player(board, color, depth, pre_move, stats):
+        booked = book_move(board, book)
+        if booked is not None:
+            return booked
+        return search_v5(board, color, depth, pre_move, stats).move
+
+    return player
+
+
+def play_from(
+    history: list[str],
+    black: Player,
+    white: Player,
+    depth: int,
+    max_plies: int,
+) -> GameRecord:
+    """Referee a game from an arbitrary position (the board after "history")."""
+    from connect6.board import check_game_end, make_move, opponent
+    from connect6.defines import Color, GameResult, SearchStats
+    from connect6.protocol import move2msg
+
+    board, pre_move, mover = replay_history(history)
+    black_tally = Tally()
+    white_tally = Tally()
+    moves: list[str] = []
+    winner: Color | None = None
+    plies = max_plies
+    for ply in range(max_plies):
+        tally = white_tally if mover is Color.WHITE else black_tally
+        player = white if mover is Color.WHITE else black
+        stats = SearchStats()
+        start = time.perf_counter()
+        move = player(board, mover, depth, pre_move, stats)
+        elapsed = (time.perf_counter() - start) * 1000
+        make_move(board, move, mover)
+        moves.append(move2msg(move))
+        tally.nodes += stats.node_count
+        tally.ms += elapsed
+        tally.moves += 1
+        pre_move = move
+        end = check_game_end(board, move)
+        if end is not None:
+            winner = mover if end is GameResult.WIN else None
+            plies = ply + 1
+            break
+        mover = opponent(mover)
+    return GameRecord(winner, plies, board, moves, black_tally, white_tally)
+
+
+def battery_horizon_plies(entry: dict[str, Any]) -> int:
+    """The ply budget of a battery entry: 2N-1 to win, 2N to defend, min_plies to start."""
+    if entry["class"] == "win":
+        return 2 * int(entry["turns"]) - 1
+    if entry["class"] == "defend":
+        return 2 * int(entry["turns"])
+    return int(entry.get("min_plies", 30))
+
+
+def battery_result(entry: dict[str, Any]) -> dict[str, Any]:
+    """One battery entry, played twice: verdict, transcript identity, cost.
+
+    Verdict rules: a win entry (our side to move) must end with our win
+    inside the horizon; a defend entry (our side to move first) must not
+    lose inside it; a start entry must not lose before min_plies. Both
+    transcripts must be identical — the engine is deterministic, so this
+    is the regression lock.
+    """
+    from connect6.board import opponent
+    from connect6.defines import SEARCH_DEPTH, Color
+
+    us = Color.BLACK if entry["us"] == "black" else Color.WHITE
+    them = opponent(us)
+    horizon = battery_horizon_plies(entry)
+    player = deployment_player()
+    start = time.perf_counter()
+    first = play_from(entry["history"], player, player, SEARCH_DEPTH, horizon)
+    wall = time.perf_counter() - start
+    second = play_from(entry["history"], player, player, SEARCH_DEPTH, horizon)
+    consistent = first.moves == second.moves
+    cutoff = first.winner is None and first.plies == horizon
+    game_class = entry["class"]
+    if game_class == "win":
+        verdict = first.winner == us and not cutoff
+    elif game_class == "defend":
+        verdict = first.winner != them
+    else:
+        verdict = not (first.winner == them and not cutoff and first.plies < horizon)
+    return {
+        "id": entry["id"],
+        "class": game_class,
+        "verdict": bool(verdict and consistent),
+        "consistent": consistent,
+        "winner": first.winner,
+        "plies": first.plies,
+        "nodes": first.black.nodes + first.white.nodes,
+        "wall": wall,
+    }
+
+
+def run_battery(battery: list[dict[str, Any]], jobs: int = 12) -> list[dict[str, Any]]:
+    """Run every battery entry, in parallel worker processes when jobs > 1.
+
+    The entries are independent self-plays over a read-only engine, so the
+    workers only divide the wall clock: the parallel results are bit-identical
+    to the sequential ones. Threads would serialise on the GIL; these are
+    processes.
+    """
+    if jobs <= 1:
+        return [battery_result(entry) for entry in battery]
+    with concurrent.futures.ProcessPoolExecutor(max_workers=jobs) as pool:
+        return list(pool.map(battery_result, battery))
+
+
+def battery_cli(argv: list[str]) -> int:
+    """`python tuning/harness.py battery [battery.json] [--jobs N]`."""
+    jobs = 12
+    battery_path = Path(__file__).resolve().parents[1] / "benchmarks" / "battery.json"
+    args = list(argv)
+    if args and args[0].endswith(".json"):
+        battery_path = Path(args.pop(0))
+    if "--jobs" in args:
+        jobs = int(args[args.index("--jobs") + 1])
+    battery = json.loads(battery_path.read_text())
+    print(f"battery: {battery_path} ({len(battery)} positions, {jobs} job{'s' if jobs != 1 else ''})", flush=True)
+    start = time.perf_counter()
+    results: list[dict[str, Any]] = []
+    if jobs <= 1:
+        for entry in battery:
+            result = battery_result(entry)
+            _print_battery_result(entry, result)
+            results.append(result)
+    else:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=jobs) as pool:
+            futures = {pool.submit(battery_result, entry): entry for entry in battery}
+            by_id = {}
+            for future in concurrent.futures.as_completed(futures):
+                entry = futures[future]
+                result = future.result()
+                _print_battery_result(entry, result)
+                by_id[entry["id"]] = result
+        results = [by_id[entry["id"]] for entry in battery]
+    wall = time.perf_counter() - start
+    failures = sum(0 if result["verdict"] else 1 for result in results)
+    print(f"\n{len(battery) - failures}/{len(battery)} passed in {wall:.1f}s total")
+    return 1 if failures else 0
+
+
+def _print_battery_result(entry: dict[str, Any], result: dict[str, Any]) -> None:
+    from connect6.defines import Color
+
+    winner = "-" if result["winner"] is None else ("black" if result["winner"] == Color.BLACK else "white")
+    status = "PASS" if result["verdict"] else "FAIL"
+    extra = "" if result["consistent"] else " (transcripts differ between runs)"
+    print(
+        f"{status}  {entry['id']:<36} {result['class']:<7} "
+        f"winner={winner:<5} plies={result['plies']:<3} "
+        f"nodes={result['nodes']:<7} {result['wall']:.1f}s{extra}",
+        flush=True,
+    )
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] == "battery":
+        raise SystemExit(battery_cli(sys.argv[2:]))
